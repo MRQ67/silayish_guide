@@ -49,7 +49,7 @@ cp .env.example .env.local
 Fill in your Supabase credentials:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (optional, for administrative scripts)
 
 4. Run the development server:
