@@ -1,6 +1,8 @@
 import { Suspense } from "react"
+import { unstable_rethrow } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import type { Location } from "@/lib/types"
+import { handleLocationError } from "@/lib/errors"
 import { CampusExplorer } from "@/components/campus-explorer"
 
 function ExplorerLoading() {
@@ -36,15 +38,13 @@ async function LocationLoader() {
       .order("name", { ascending: true })
 
     if (error) {
-      errorMessage = error.message
+      errorMessage = handleLocationError(error)
     } else {
       locations = (data as Location[]) || []
     }
   } catch (err) {
-    errorMessage =
-      err instanceof Error
-        ? err.message
-        : "Failed to connect to Supabase server."
+    unstable_rethrow(err)
+    errorMessage = handleLocationError(err)
   }
 
   if (errorMessage) {
@@ -54,16 +54,7 @@ async function LocationLoader() {
           <h2 className="text-lg font-semibold text-destructive">
             Unable to load campus locations
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            There was an issue fetching campus data from the database:
-          </p>
-          <p className="mt-2 rounded border border-destructive/20 bg-background p-2 font-mono text-xs text-destructive">
-            {errorMessage}
-          </p>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Please verify your Supabase configuration in your environment
-            variables and refresh the page.
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
         </div>
       </main>
     )
@@ -77,8 +68,7 @@ async function LocationLoader() {
             No campus locations available
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            The database does not contain any campus locations yet. Run the
-            database seed script or add locations through the admin portal.
+            There are currently no locations listed in the campus guide.
           </p>
         </div>
       </main>
