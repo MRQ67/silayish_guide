@@ -1,5 +1,11 @@
 export type LocationType = "building" | "office" | "dorm" | "lab" | "facility"
 
+export interface Category {
+  id: string
+  name: string
+  icon?: string | null
+}
+
 export interface Location {
   id: string
   name: string
@@ -7,6 +13,7 @@ export interface Location {
   type: LocationType
   parent_id?: string | null
   category_id?: string | null
+  category?: Category | null
   description?: string | null
   lat?: number | null
   lng?: number | null
