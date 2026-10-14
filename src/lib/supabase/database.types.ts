@@ -40,6 +40,7 @@ export interface Database {
         Row: {
           id: string
           name: string
+          code: string | null
           type: LocationType
           parent_id: string | null
           category_id: string | null
@@ -55,6 +56,7 @@ export interface Database {
         Insert: {
           id?: string
           name: string
+          code?: string | null
           type: LocationType
           parent_id?: string | null
           category_id?: string | null
@@ -70,6 +72,7 @@ export interface Database {
         Update: {
           id?: string
           name?: string
+          code?: string | null
           type?: LocationType
           parent_id?: string | null
           category_id?: string | null
