@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { DEFAULT_LOCATION_ERROR_MESSAGE, handleLocationError } from "./errors"
+import {
+  DEFAULT_LOCATION_ERROR_MESSAGE,
+  handleDatabaseMutationError,
+  handleLocationError,
+} from "./errors"
 
 describe("handleLocationError", () => {
   beforeEach(() => {
@@ -72,3 +76,45 @@ describe("handleLocationError", () => {
     expect(console.error).toHaveBeenCalledWith(customLabel, err)
   })
 })
+
+describe("handleDatabaseMutationError", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("returns specific duplicate code message for Postgres error 23505", () => {
+    const error = {
+      code: "23505",
+      message: 'duplicate key value violates unique constraint "locations_code_key"',
+    }
+    const result = handleDatabaseMutationError(error)
+
+    expect(result).toBe("That code is already used by another location.")
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it("returns specific foreign key message for Postgres error 23503", () => {
+    const error = {
+      code: "23503",
+      message: 'update or delete on table "locations" violates foreign key constraint',
+    }
+    const result = handleDatabaseMutationError(error)
+
+    expect(result).toBe("This location still has places inside it. Move or delete them first.")
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  it("logs and returns generic message for unhandled errors", () => {
+    const genericError = new Error("Unexpected database disconnection")
+    const result = handleDatabaseMutationError(genericError, "[admin] update failed")
+
+    expect(result).toBe(DEFAULT_LOCATION_ERROR_MESSAGE)
+    expect(result).not.toContain("Unexpected database disconnection")
+    expect(console.error).toHaveBeenCalledWith("[admin] update failed", genericError)
+  })
+})
+
