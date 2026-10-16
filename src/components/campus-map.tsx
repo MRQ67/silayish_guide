@@ -13,6 +13,7 @@ import {
   DDU_CAMPUS_CENTER,
 } from "@/lib/map-utils"
 import { fixLeafletDefaultIcon } from "@/lib/leaflet-fix"
+import { DEFAULT_TILE_CONFIG } from "@/lib/map-config"
 import { MapPopup } from "@/components/map-popup"
 
 fixLeafletDefaultIcon()
@@ -121,8 +122,10 @@ export default function CampusMap({
         className="h-full w-full z-0"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution={DEFAULT_TILE_CONFIG.attribution}
+          url={DEFAULT_TILE_CONFIG.url}
+          subdomains={DEFAULT_TILE_CONFIG.subdomains}
+          maxZoom={DEFAULT_TILE_CONFIG.maxZoom}
         />
 
         <MapBoundsController markers={markers} />
