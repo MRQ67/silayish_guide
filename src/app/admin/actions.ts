@@ -5,7 +5,8 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin, verifyAdmin } from "@/lib/auth"
 import { handleDatabaseMutationError, handleLocationError } from "@/lib/errors"
-import { locationSchema } from "@/lib/validations/location"
+import { locationSchema, uuidSchema } from "@/lib/validations/location"
+import { z } from "zod"
 
 export interface ActionResult<T = unknown> {
   success: boolean
@@ -14,14 +15,20 @@ export interface ActionResult<T = unknown> {
   fieldErrors?: Record<string, string[]>
 }
 
+const loginInputSchema = z.object({
+  email: z.string().trim().email(),
+  password: z.string().min(1),
+})
+
 export async function loginAction(
   _prevState: { error?: string } | null,
   formData: FormData
 ): Promise<{ error?: string }> {
-  const email = (formData.get("email") as string)?.trim()
-  const password = formData.get("password") as string
+  const email = formData.get("email")
+  const password = formData.get("password")
 
-  if (!email || !password) {
+  const parsed = loginInputSchema.safeParse({ email, password })
+  if (!parsed.success) {
     return { error: "Invalid email or password" }
   }
 
@@ -30,8 +37,8 @@ export async function loginAction(
   let shouldRedirect = false
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: parsed.data.email,
+      password: parsed.data.password,
     })
 
     if (error || !data.user) {
@@ -108,9 +115,17 @@ export async function updateLocationAction(
 ): Promise<ActionResult> {
   const { supabase } = await requireAdmin()
 
+  const idResult = uuidSchema.safeParse(id)
+  if (!idResult.success) {
+    return {
+      success: false,
+      error: "Invalid location ID.",
+    }
+  }
+
   const parseResult = locationSchema.safeParse({
     ...rawInput,
-    id,
+    id: idResult.data,
   })
 
   if (!parseResult.success) {
@@ -127,7 +142,7 @@ export async function updateLocationAction(
   const { data, error } = await supabase
     .from("locations")
     .update(locationData as never)
-    .eq("id", id)
+    .eq("id", idResult.data)
     .select()
     .single()
 
@@ -150,7 +165,15 @@ export async function updateLocationAction(
 export async function deleteLocationAction(id: string): Promise<ActionResult> {
   const { supabase } = await requireAdmin()
 
-  const { error } = await supabase.from("locations").delete().eq("id", id)
+  const idResult = uuidSchema.safeParse(id)
+  if (!idResult.success) {
+    return {
+      success: false,
+      error: "Invalid location ID.",
+    }
+  }
+
+  const { error } = await supabase.from("locations").delete().eq("id", idResult.data)
 
   if (error) {
     return {
