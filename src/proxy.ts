@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import type { Database } from "@/lib/supabase/database.types"
 import { verifyAdmin } from "@/lib/auth"
+import { redirectWithCookies } from "@/lib/proxy-utils"
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -25,7 +26,7 @@ export async function proxy(request: NextRequest) {
 
     if (!supabaseUrl || !supabasePublishableKey) {
       const loginUrl = new URL("/admin/login", request.url)
-      return NextResponse.redirect(loginUrl)
+      return redirectWithCookies(loginUrl, response)
     }
 
     const supabase = createServerClient<Database>(
@@ -62,12 +63,12 @@ export async function proxy(request: NextRequest) {
     if (!adminCheck.isAdmin) {
       const loginUrl = new URL("/admin/login", request.url)
       loginUrl.searchParams.set("error", "not_authorized")
-      return NextResponse.redirect(loginUrl)
+      return redirectWithCookies(loginUrl, response)
     }
 
     if (pathname === "/admin" || pathname === "/admin/") {
       const locationsUrl = new URL("/admin/locations", request.url)
-      return NextResponse.redirect(locationsUrl)
+      return redirectWithCookies(locationsUrl, response)
     }
 
     return response
