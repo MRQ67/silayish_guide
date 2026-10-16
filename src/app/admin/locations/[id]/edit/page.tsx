@@ -15,6 +15,8 @@ interface EditLocationPageProps {
   params: Promise<{ id: string }>
 }
 
+export const instant = false
+
 export default async function EditLocationPage({
   params,
 }: EditLocationPageProps) {

@@ -1,6 +1,8 @@
 import { Suspense } from "react"
 import { LoginForm } from "@/components/admin/login-form"
 
+export const instant = false
+
 export default function AdminLoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 font-sans sm:p-8">

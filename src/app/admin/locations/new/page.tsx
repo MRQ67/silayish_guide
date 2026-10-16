@@ -8,6 +8,8 @@ import {
 } from "@/components/admin/location-form"
 import type { Category } from "@/lib/types"
 
+export const instant = false
+
 export default async function NewLocationPage() {
   await connection()
   const { supabase, user } = await requireAdmin()
