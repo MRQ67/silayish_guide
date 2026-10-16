@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { unstable_rethrow } from "next/navigation"
+import { connection } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import type { Location } from "@/lib/types"
 import { handleLocationError } from "@/lib/errors"
@@ -27,6 +28,7 @@ function ExplorerLoading() {
 }
 
 async function LocationLoader() {
+  await connection()
   let locations: Location[] = []
   let errorMessage: string | null = null
 

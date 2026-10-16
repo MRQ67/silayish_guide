@@ -13,3 +13,32 @@ export function handleLocationError(
   console.error(label, error)
   return DEFAULT_LOCATION_ERROR_MESSAGE
 }
+
+export const DUPLICATE_CODE_ERROR_MESSAGE =
+  "That code is already used by another location."
+
+export const REFERENCED_LOCATION_ERROR_MESSAGE =
+  "This location still has places inside it. Move or delete them first."
+
+/**
+ * Handles database mutation errors for admin operations.
+ * Maps duplicate code (23505) and foreign key reference (23503) errors to
+ * safe user-facing explanations, while generic-logging all other errors.
+ */
+export function handleDatabaseMutationError(
+  error: unknown,
+  label: string = "[admin] mutation error"
+): string {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const pgCode = String((error as { code: unknown }).code)
+    if (pgCode === "23505") {
+      return DUPLICATE_CODE_ERROR_MESSAGE
+    }
+    if (pgCode === "23503") {
+      return REFERENCED_LOCATION_ERROR_MESSAGE
+    }
+  }
+
+  return handleLocationError(error, label)
+}
+
