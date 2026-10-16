@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { locationSchema } from "./location"
+import { isValidUuid, locationSchema } from "./location"
 
 describe("locationSchema", () => {
   const baseValidData = {
@@ -183,12 +183,44 @@ describe("locationSchema", () => {
     })
   })
 
-  describe("self-parent constraint", () => {
+  describe("UUID validation and self-parent constraint", () => {
+    const validUuid1 = "123e4567-e89b-12d3-a456-426614174000"
+    const validUuid2 = "987fcdeb-51a2-43f7-9876-543210987654"
+
+    it("validates UUIDs correctly with isValidUuid", () => {
+      expect(isValidUuid(validUuid1)).toBe(true)
+      expect(isValidUuid("not-a-uuid")).toBe(false)
+      expect(isValidUuid(null)).toBe(false)
+      expect(isValidUuid(undefined)).toBe(false)
+    })
+
+    it("rejects non-UUID id", () => {
+      const result = locationSchema.safeParse({
+        ...baseValidData,
+        id: "invalid-id",
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it("rejects non-UUID category_id and parent_id", () => {
+      const badCategory = locationSchema.safeParse({
+        ...baseValidData,
+        category_id: "not-a-uuid",
+      })
+      expect(badCategory.success).toBe(false)
+
+      const badParent = locationSchema.safeParse({
+        ...baseValidData,
+        parent_id: "not-a-uuid",
+      })
+      expect(badParent.success).toBe(false)
+    })
+
     it("fails when a location is its own parent", () => {
       const result = locationSchema.safeParse({
         ...baseValidData,
-        id: "location-abc",
-        parent_id: "location-abc",
+        id: validUuid1,
+        parent_id: validUuid1,
       })
 
       expect(result.success).toBe(false)
@@ -202,8 +234,8 @@ describe("locationSchema", () => {
     it("succeeds when parent is a different location", () => {
       const result = locationSchema.safeParse({
         ...baseValidData,
-        id: "location-abc",
-        parent_id: "location-xyz",
+        id: validUuid1,
+        parent_id: validUuid2,
       })
 
       expect(result.success).toBe(true)

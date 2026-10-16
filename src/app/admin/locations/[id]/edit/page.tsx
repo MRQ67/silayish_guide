@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth"
+import { handleLocationError } from "@/lib/errors"
+import { isValidUuid } from "@/lib/validations/location"
 import { AdminHeader } from "@/components/admin/admin-header"
 import {
   LocationForm,
@@ -16,10 +18,20 @@ export default async function EditLocationPage({
   params,
 }: EditLocationPageProps) {
   const { id } = await params
+
+  // 1. Validate that the [id] param is a valid UUID before querying.
+  if (!isValidUuid(id)) {
+    notFound()
+  }
+
   const { supabase, user } = await requireAdmin()
 
-  const [locationResult, categoriesResult, buildingsResult] =
-    await Promise.all([
+  let locationResult
+  let categoriesResult
+  let buildingsResult
+
+  try {
+    ;[locationResult, categoriesResult, buildingsResult] = await Promise.all([
       supabase.from("locations").select("*").eq("id", id).maybeSingle(),
       supabase.from("categories").select("id, name, icon").order("name"),
       supabase
@@ -28,7 +40,49 @@ export default async function EditLocationPage({
         .eq("type", "building")
         .order("name"),
     ])
+  } catch (err) {
+    const errorMessage = handleLocationError(
+      err,
+      "[admin] location edit load failed"
+    )
+    return (
+      <div className="min-h-screen bg-background font-sans">
+        <AdminHeader userEmail={user.email} />
+        <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+          >
+            {errorMessage}
+          </div>
+        </main>
+      </div>
+    )
+  }
 
+  // 2. Check query error. If there is an error, log it and show generic error UI.
+  // Never call notFound() for a failed query.
+  if (locationResult.error) {
+    const errorMessage = handleLocationError(
+      locationResult.error,
+      "[admin] location edit query failed"
+    )
+    return (
+      <div className="min-h-screen bg-background font-sans">
+        <AdminHeader userEmail={user.email} />
+        <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
+          >
+            {errorMessage}
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // 3. Call notFound() only when query succeeded and returned no row.
   if (!locationResult.data) {
     notFound()
   }

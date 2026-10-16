@@ -20,9 +20,15 @@ const optionalStringPreprocessor = (val: unknown) => {
   return val
 }
 
+export const uuidSchema = z.string().uuid("Invalid UUID format")
+
+export function isValidUuid(id: unknown): boolean {
+  return typeof id === "string" && uuidSchema.safeParse(id).success
+}
+
 export const locationSchema = z
   .object({
-    id: z.string().optional(),
+    id: z.string().uuid("Invalid location ID").optional(),
     name: z.string().trim().min(1, "Name is required"),
     code: z
       .preprocess(
@@ -45,13 +51,13 @@ export const locationSchema = z
     category_id: z
       .preprocess(
         (val) => (!val || val === "" ? null : val),
-        z.string().nullable()
+        z.string().uuid("Invalid category ID").nullable()
       )
       .default(null),
     parent_id: z
       .preprocess(
         (val) => (!val || val === "" ? null : val),
-        z.string().nullable()
+        z.string().uuid("Invalid parent building ID").nullable()
       )
       .default(null),
     description: z
