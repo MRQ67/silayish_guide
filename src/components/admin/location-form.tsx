@@ -222,6 +222,11 @@ export function LocationForm({
               </option>
             ))}
           </select>
+          {fieldErrors.category_id && (
+            <p className="mt-1 text-xs text-destructive">
+              {fieldErrors.category_id[0]}
+            </p>
+          )}
         </div>
 
         {/* Parent Building */}
@@ -301,6 +306,11 @@ export function LocationForm({
             placeholder="e.g. Mon-Fri 8:00 AM - 5:00 PM"
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
           />
+          {fieldErrors.opening_hours && (
+            <p className="mt-1 text-xs text-destructive">
+              {fieldErrors.opening_hours[0]}
+            </p>
+          )}
         </div>
 
         {/* Latitude */}
@@ -373,6 +383,11 @@ export function LocationForm({
             placeholder="Brief details about facilities, departments, or entrance points..."
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
           />
+          {fieldErrors.description && (
+            <p className="mt-1 text-xs text-destructive">
+              {fieldErrors.description[0]}
+            </p>
+          )}
         </div>
 
         {/* Photo URL */}
@@ -393,6 +408,11 @@ export function LocationForm({
             placeholder="https://example.com/images/building.jpg"
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
           />
+          {fieldErrors.photo_url && (
+            <p className="mt-1 text-xs text-destructive">
+              {fieldErrors.photo_url[0]}
+            </p>
+          )}
         </div>
       </div>
 
