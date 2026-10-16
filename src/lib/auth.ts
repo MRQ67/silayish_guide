@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { connection } from "next/server"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { handleLocationError } from "@/lib/errors"
@@ -48,6 +49,7 @@ export async function verifyAdmin(
  * If unauthenticated or unauthorized, signs out (if signed in) and redirects to /admin/login.
  */
 export async function requireAdmin() {
+  await connection()
   const supabase = await createClient()
   const result = await verifyAdmin(supabase)
 

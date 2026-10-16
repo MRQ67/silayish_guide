@@ -1,3 +1,4 @@
+import { connection } from "next/server"
 import { requireAdmin } from "@/lib/auth"
 import { handleLocationError } from "@/lib/errors"
 import { AdminHeader } from "@/components/admin/admin-header"
@@ -7,6 +8,7 @@ import {
 } from "@/components/admin/locations-table"
 
 export default async function AdminLocationsPage() {
+  await connection()
   const { supabase, user } = await requireAdmin()
 
   let locations: AdminLocationItem[] = []

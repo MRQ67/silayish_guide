@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { connection } from "next/server"
 import { requireAdmin } from "@/lib/auth"
 import { AdminHeader } from "@/components/admin/admin-header"
 import {
@@ -8,6 +9,7 @@ import {
 import type { Category } from "@/lib/types"
 
 export default async function NewLocationPage() {
+  await connection()
   const { supabase, user } = await requireAdmin()
 
   const [categoriesResult, buildingsResult] = await Promise.all([

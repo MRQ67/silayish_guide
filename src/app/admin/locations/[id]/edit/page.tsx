@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { connection } from "next/server"
 import { requireAdmin } from "@/lib/auth"
 import { handleLocationError } from "@/lib/errors"
 import { isValidUuid } from "@/lib/validations/location"
@@ -17,6 +18,7 @@ interface EditLocationPageProps {
 export default async function EditLocationPage({
   params,
 }: EditLocationPageProps) {
+  await connection()
   const { id } = await params
 
   // 1. Validate that the [id] param is a valid UUID before querying.
