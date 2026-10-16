@@ -1,11 +1,15 @@
 import { connection } from "next/server"
 import { requireAdmin } from "@/lib/auth"
 import { handleLocationError } from "@/lib/errors"
+import { attachParentNames } from "@/lib/location-utils"
+import type { Location } from "@/lib/types"
 import { AdminHeader } from "@/components/admin/admin-header"
 import {
   LocationsTable,
   type AdminLocationItem,
 } from "@/components/admin/locations-table"
+
+export const instant = false
 
 export default async function AdminLocationsPage() {
   await connection()
@@ -19,15 +23,15 @@ export default async function AdminLocationsPage() {
       .from("locations")
       .select(`
         *,
-        category:categories(id, name, icon),
-        parent:locations!locations_parent_id_fkey(id, name, code)
+        category:categories(id, name, icon)
       `)
       .order("name", { ascending: true })
 
     if (error) {
       errorMessage = handleLocationError(error, "[admin] locations fetch failed")
     } else {
-      locations = (data as unknown as AdminLocationItem[]) || []
+      const rawLocations = (data as unknown as Location[]) || []
+      locations = attachParentNames(rawLocations)
     }
   } catch (err) {
     errorMessage = handleLocationError(err, "[admin] locations load exception")
