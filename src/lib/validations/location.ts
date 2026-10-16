@@ -20,7 +20,10 @@ const optionalStringPreprocessor = (val: unknown) => {
   return val
 }
 
-export const uuidSchema = z.string().uuid("Invalid UUID format")
+export const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
+export const uuidSchema = z.string().regex(UUID_REGEX, "Invalid UUID format")
 
 export function isValidUuid(id: unknown): boolean {
   return typeof id === "string" && uuidSchema.safeParse(id).success
@@ -28,7 +31,11 @@ export function isValidUuid(id: unknown): boolean {
 
 export const locationSchema = z
   .object({
-    id: z.string().uuid("Invalid location ID").optional(),
+    id: z
+      .preprocess(
+        optionalStringPreprocessor,
+        z.string().regex(UUID_REGEX, "Invalid location ID").nullable().optional()
+      ),
     name: z.string().trim().min(1, "Name is required"),
     code: z
       .preprocess(
@@ -50,14 +57,14 @@ export const locationSchema = z
     type: z.enum(["building", "office", "dorm", "lab", "facility"]),
     category_id: z
       .preprocess(
-        (val) => (!val || val === "" ? null : val),
-        z.string().uuid("Invalid category ID").nullable()
+        optionalStringPreprocessor,
+        z.string().regex(UUID_REGEX, "Invalid category ID").nullable()
       )
       .default(null),
     parent_id: z
       .preprocess(
-        (val) => (!val || val === "" ? null : val),
-        z.string().uuid("Invalid parent building ID").nullable()
+        optionalStringPreprocessor,
+        z.string().regex(UUID_REGEX, "Invalid parent building ID").nullable()
       )
       .default(null),
     description: z

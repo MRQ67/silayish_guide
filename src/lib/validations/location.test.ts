@@ -276,4 +276,218 @@ describe("locationSchema", () => {
       expect(invalidFloor.success).toBe(false)
     })
   })
+
+  describe("optional fields handling and form submission", () => {
+    const validCategoryId = "11111111-1111-1111-1111-111111111101"
+    const validParentId = "22222222-2222-2222-2222-222222222201"
+
+    it("passes when submitted with valid category UUID, code, description, name, type, and empty optional fields", () => {
+      const payload = {
+        name: "Engineering Complex",
+        code: "B-015",
+        type: "building",
+        category_id: validCategoryId,
+        description: "Main engineering research block",
+        parent_id: "",
+        lat: "",
+        lng: "",
+        floor: "",
+        opening_hours: "",
+        photo_url: "",
+      }
+
+      const result = locationSchema.safeParse(payload)
+      expect(result.success).toBe(true)
+
+      if (result.success) {
+        expect(result.data.name).toBe("Engineering Complex")
+        expect(result.data.code).toBe("B-015")
+        expect(result.data.type).toBe("building")
+        expect(result.data.category_id).toBe(validCategoryId)
+        expect(result.data.description).toBe("Main engineering research block")
+        expect(result.data.parent_id).toBeNull()
+        expect(result.data.lat).toBeNull()
+        expect(result.data.lng).toBeNull()
+        expect(result.data.floor).toBeNull()
+        expect(result.data.opening_hours).toBeNull()
+        expect(result.data.photo_url).toBeNull()
+      }
+    })
+
+    it("converts every optional field from empty or whitespace strings into null", () => {
+      const payload = {
+        name: "Test Location",
+        type: "lab",
+        code: "   ",
+        parent_id: "   ",
+        category_id: "   ",
+        description: "   ",
+        lat: "   ",
+        lng: "   ",
+        floor: "   ",
+        opening_hours: "   ",
+        photo_url: "   ",
+      }
+
+      const result = locationSchema.safeParse(payload)
+      expect(result.success).toBe(true)
+
+      if (result.success) {
+        expect(result.data.code).toBeNull()
+        expect(result.data.parent_id).toBeNull()
+        expect(result.data.category_id).toBeNull()
+        expect(result.data.description).toBeNull()
+        expect(result.data.lat).toBeNull()
+        expect(result.data.lng).toBeNull()
+        expect(result.data.floor).toBeNull()
+        expect(result.data.opening_hours).toBeNull()
+        expect(result.data.photo_url).toBeNull()
+      }
+    })
+
+    it("accepts valid values for all optional fields", () => {
+      const payload = {
+        name: "Robotics Lab",
+        code: "lab-01",
+        type: "lab",
+        parent_id: validParentId,
+        category_id: validCategoryId,
+        description: "Robotics and automation lab",
+        lat: "9.5934",
+        lng: "41.8596",
+        floor: "2",
+        opening_hours: "Mon-Fri 8am-5pm",
+        photo_url: "https://example.com/robotics.jpg",
+      }
+
+      const result = locationSchema.safeParse(payload)
+      expect(result.success).toBe(true)
+
+      if (result.success) {
+        expect(result.data.code).toBe("LAB-01")
+        expect(result.data.parent_id).toBe(validParentId)
+        expect(result.data.category_id).toBe(validCategoryId)
+        expect(result.data.lat).toBe(9.5934)
+        expect(result.data.lng).toBe(41.8596)
+        expect(result.data.floor).toBe(2)
+        expect(result.data.opening_hours).toBe("Mon-Fri 8am-5pm")
+        expect(result.data.photo_url).toBe("https://example.com/robotics.jpg")
+      }
+    })
+  })
+
+  describe("field-level error reporting on invalid values", () => {
+    it("reports an error on name when name is empty", () => {
+      const result = locationSchema.safeParse({
+        name: "   ",
+        type: "building",
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors
+        expect(fieldErrors.name).toBeDefined()
+        expect(fieldErrors.name?.[0]).toBe("Name is required")
+      }
+    })
+
+    it("reports an error on code when code exceeds 20 characters", () => {
+      const result = locationSchema.safeParse({
+        name: "Main Library",
+        type: "building",
+        code: "A".repeat(21),
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors
+        expect(fieldErrors.code).toBeDefined()
+        expect(fieldErrors.code?.[0]).toBe(
+          "Code must be between 1 and 20 characters"
+        )
+      }
+    })
+
+    it("reports an error on lng when only lat is set", () => {
+      const result = locationSchema.safeParse({
+        name: "Main Library",
+        type: "building",
+        lat: 9.5934,
+        lng: "",
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors
+        expect(fieldErrors.lng).toBeDefined()
+        expect(fieldErrors.lng?.[0]).toBe(
+          "Latitude and longitude must both be set or both be empty"
+        )
+      }
+    })
+
+    it("reports an error on lat when lat is out of range", () => {
+      const result = locationSchema.safeParse({
+        name: "Main Library",
+        type: "building",
+        lat: 95,
+        lng: 41,
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors
+        expect(fieldErrors.lat).toBeDefined()
+        expect(fieldErrors.lat?.[0]).toBe(
+          "Latitude must be between -90 and 90"
+        )
+      }
+    })
+
+    it("reports an error on floor when floor is a non-integer", () => {
+      const result = locationSchema.safeParse({
+        name: "Main Library",
+        type: "building",
+        floor: 1.5,
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors
+        expect(fieldErrors.floor).toBeDefined()
+        expect(fieldErrors.floor?.[0]).toBe("Floor must be an integer")
+      }
+    })
+
+    it("reports an error on category_id when non-empty invalid UUID is provided", () => {
+      const result = locationSchema.safeParse({
+        name: "Main Library",
+        type: "building",
+        category_id: "not-a-valid-uuid",
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors
+        expect(fieldErrors.category_id).toBeDefined()
+        expect(fieldErrors.category_id?.[0]).toBe("Invalid category ID")
+      }
+    })
+
+    it("reports an error on parent_id when non-empty invalid UUID is provided", () => {
+      const result = locationSchema.safeParse({
+        name: "Main Library",
+        type: "building",
+        parent_id: "not-a-valid-uuid",
+      })
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors
+        expect(fieldErrors.parent_id).toBeDefined()
+        expect(fieldErrors.parent_id?.[0]).toBe("Invalid parent building ID")
+      }
+    })
+  })
 })
+
