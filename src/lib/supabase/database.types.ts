@@ -50,6 +50,7 @@ export interface Database {
           floor: number | null
           opening_hours: string | null
           photo_url: string | null
+          outline: Json | null
           created_at: string
           updated_at: string
         }
@@ -66,6 +67,7 @@ export interface Database {
           floor?: number | null
           opening_hours?: string | null
           photo_url?: string | null
+          outline?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -82,6 +84,7 @@ export interface Database {
           floor?: number | null
           opening_hours?: string | null
           photo_url?: string | null
+          outline?: Json | null
           created_at?: string
           updated_at?: string
         }

@@ -1,4 +1,10 @@
 import { z } from "zod"
+import type { MultiPolygon, Polygon } from "@/lib/types"
+import {
+  calculateOutlineCenter,
+  haversineDistanceMeters,
+  validateOutline,
+} from "./outline"
 
 const coordinatePreprocessor = (val: unknown) => {
   if (val === null || val === undefined || val === "") return null
@@ -102,6 +108,18 @@ export const locationSchema = z
     photo_url: z
       .preprocess(optionalStringPreprocessor, z.string().nullable())
       .default(null),
+    outline: z
+      .preprocess((val: unknown) => {
+        if (val === null || val === undefined || val === "") return null
+        if (typeof val === "string" && val.trim() === "") return null
+        const res = validateOutline(val)
+        if (!res.valid) {
+          return { __outlineError: res.error || "Invalid building outline GeoJSON" }
+        }
+        return res.geometry ?? null
+      }, z.custom<Polygon | MultiPolygon | null>())
+      .nullable()
+      .default(null),
   })
   .superRefine((data, ctx) => {
     const hasLat = data.lat !== null && data.lat !== undefined
@@ -121,6 +139,39 @@ export const locationSchema = z
         message: "A location cannot be its own parent",
         path: ["parent_id"],
       })
+    }
+
+    if (data.outline) {
+      if (
+        typeof data.outline === "object" &&
+        data.outline !== null &&
+        "__outlineError" in data.outline
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: (data.outline as { __outlineError: string }).__outlineError,
+          path: ["outline"],
+        })
+      } else {
+        const outlineGeom = data.outline as Polygon | MultiPolygon
+        if (hasLat && hasLng) {
+          const center = calculateOutlineCenter(outlineGeom)
+          const dist = haversineDistanceMeters(
+            data.lat as number,
+            data.lng as number,
+            center.lat,
+            center.lng
+          )
+          if (dist > 1000) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message:
+                "Outline center is more than 1 km from the location coordinates. The coordinates may be swapped or the outline belongs to another place.",
+              path: ["outline"],
+            })
+          }
+        }
+      }
     }
   })
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import dynamic from "next/dynamic"
 import { Search, X } from "lucide-react"
 
@@ -38,9 +38,20 @@ export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
     return searchLocations(initialLocations, searchQuery)
   }, [initialLocations, searchQuery])
 
-  const markers = useMemo(() => {
-    return getMapMarkers(filteredLocations)
-  }, [filteredLocations])
+  const mapItemCount = useMemo(() => {
+    const outlinesCount = filteredLocations.filter((l) => Boolean(l.outline)).length
+    const markersCount = getMapMarkers(filteredLocations, initialLocations).length
+    return outlinesCount + markersCount
+  }, [filteredLocations, initialLocations])
+
+  // Scroll the selected location list item into view when selected from the map outline or marker
+  useEffect(() => {
+    if (!selectedLocation) return
+    const el = document.getElementById(`location-item-${selectedLocation.id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+  }, [selectedLocation])
 
   const handleSelectLocation = (location: Location) => {
     setSelectedLocation(location)
@@ -54,7 +65,8 @@ export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
         className="relative h-[320px] w-full shrink-0 border-b border-border sm:h-[380px] md:order-2 md:h-full md:flex-1 md:border-b-0 md:border-l"
       >
         <CampusMap
-          markers={markers}
+          locations={filteredLocations}
+          allLocations={initialLocations}
           selectedLocation={selectedLocation}
           onSelectLocation={handleSelectLocation}
         />
@@ -94,9 +106,9 @@ export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
                 ? "1 location found"
                 : `${filteredLocations.length} locations found`}
             </span>
-            {markers.length > 0 && (
+            {mapItemCount > 0 && (
               <span>
-                {markers.length === 1 ? "1 on map" : `${markers.length} on map`}
+                {mapItemCount === 1 ? "1 on map" : `${mapItemCount} on map`}
               </span>
             )}
           </div>

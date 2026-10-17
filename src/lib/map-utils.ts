@@ -1,4 +1,8 @@
 import type { Location } from "./types"
+import {
+  calculateOutlineBounds,
+  calculateOutlineCenter,
+} from "./validations/outline"
 
 export const DDU_CAMPUS_CENTER: [number, number] = [9.6178, 41.8362]
 
@@ -25,13 +29,42 @@ export function isValidCoordinate(
 }
 
 /**
- * Converts locations with valid coordinates into map markers.
- * Locations with missing or invalid coordinates are excluded from map markers.
+ * Converts locations without outlines into map markers.
+ * - Locations with an outline are rendered as outlines, not pins.
+ * - A location with a parent that has an outline is not drawn separately.
+ * - Locations with missing or invalid coordinates are excluded.
  */
-export function getMapMarkers(locations: Location[]): MapMarker[] {
+export function getMapMarkers(
+  locations: Location[],
+  allLocations?: Location[]
+): MapMarker[] {
+  const lookup = new Map<string, Location>()
+  if (allLocations) {
+    for (const loc of allLocations) {
+      lookup.set(loc.id, loc)
+    }
+  } else {
+    for (const loc of locations) {
+      lookup.set(loc.id, loc)
+    }
+  }
+
   const markers: MapMarker[] = []
 
   for (const location of locations) {
+    // Locations with an outline keep no pin
+    if (location.outline) {
+      continue
+    }
+
+    // A location with a parent that has an outline is not drawn separately
+    if (location.parent_id) {
+      const parent = lookup.get(location.parent_id)
+      if (parent?.outline) {
+        continue
+      }
+    }
+
     if (
       isValidCoordinate(location.lat, location.lng) &&
       typeof location.lat === "number" &&
@@ -49,28 +82,40 @@ export function getMapMarkers(locations: Location[]): MapMarker[] {
 }
 
 /**
- * Computes bounding coordinates [southWest, northEast] for a set of locations.
+ * Computes bounding coordinates [southWest, northEast] across both markers and outlines.
  * Returns null if no valid coordinates are available.
  */
 export function calculateMapBounds(
   locations: Location[]
 ): [[number, number], [number, number]] | null {
-  const markers = getMapMarkers(locations)
-  if (markers.length === 0) {
-    return null
+  let minLat: number | null = null
+  let maxLat: number | null = null
+  let minLng: number | null = null
+  let maxLng: number | null = null
+
+  const extend = (lat: number, lng: number) => {
+    if (minLat === null || lat < minLat) minLat = lat
+    if (maxLat === null || lat > maxLat) maxLat = lat
+    if (minLng === null || lng < minLng) minLng = lng
+    if (maxLng === null || lng > maxLng) maxLng = lng
   }
 
-  let minLat = markers[0].position[0]
-  let maxLat = markers[0].position[0]
-  let minLng = markers[0].position[1]
-  let maxLng = markers[0].position[1]
+  for (const loc of locations) {
+    if (loc.outline) {
+      const bounds = calculateOutlineBounds(loc.outline)
+      extend(bounds[0][0], bounds[0][1])
+      extend(bounds[1][0], bounds[1][1])
+    } else if (
+      isValidCoordinate(loc.lat, loc.lng) &&
+      typeof loc.lat === "number" &&
+      typeof loc.lng === "number"
+    ) {
+      extend(loc.lat, loc.lng)
+    }
+  }
 
-  for (let i = 1; i < markers.length; i++) {
-    const [lat, lng] = markers[i].position
-    if (lat < minLat) minLat = lat
-    if (lat > maxLat) maxLat = lat
-    if (lng < minLng) minLng = lng
-    if (lng > maxLng) maxLng = lng
+  if (minLat === null || maxLat === null || minLng === null || maxLng === null) {
+    return null
   }
 
   return [
@@ -80,24 +125,37 @@ export function calculateMapBounds(
 }
 
 /**
- * Computes a geographic center coordinate from valid location coordinates.
+ * Computes a geographic center coordinate from valid location coordinates and outline centers.
  * Falls back to default campus coordinates if no locations are valid.
  */
 export function calculateMapCenter(
   locations: Location[],
   fallbackCenter: [number, number] = DDU_CAMPUS_CENTER
 ): [number, number] {
-  const markers = getMapMarkers(locations)
-  if (markers.length === 0) {
+  let sumLat = 0
+  let sumLng = 0
+  let count = 0
+
+  for (const loc of locations) {
+    if (loc.outline) {
+      const center = calculateOutlineCenter(loc.outline)
+      sumLat += center.lat
+      sumLng += center.lng
+      count++
+    } else if (
+      isValidCoordinate(loc.lat, loc.lng) &&
+      typeof loc.lat === "number" &&
+      typeof loc.lng === "number"
+    ) {
+      sumLat += loc.lat
+      sumLng += loc.lng
+      count++
+    }
+  }
+
+  if (count === 0) {
     return fallbackCenter
   }
 
-  let sumLat = 0
-  let sumLng = 0
-  for (const marker of markers) {
-    sumLat += marker.position[0]
-    sumLng += marker.position[1]
-  }
-
-  return [sumLat / markers.length, sumLng / markers.length]
+  return [sumLat / count, sumLng / count]
 }

@@ -44,6 +44,7 @@ export function LocationListItem({
 
     return (
       <div
+        id={`location-item-${location.id}`}
         role="button"
         tabIndex={0}
         data-testid="location-list-item"
@@ -61,6 +62,7 @@ export function LocationListItem({
 
   return (
     <article
+      id={`location-item-${location.id}`}
       data-testid="location-list-item"
       className={cn(
         "flex items-start justify-between gap-3 rounded-lg border bg-card p-3 font-sans text-card-foreground shadow-xs transition-colors",
