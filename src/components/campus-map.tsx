@@ -23,7 +23,10 @@ import {
   isValidCoordinate,
 } from "@/lib/map-utils"
 import { fixLeafletDefaultIcon } from "@/lib/leaflet-fix"
-import { DEFAULT_TILE_CONFIG, OUTLINE_LABEL_MIN_ZOOM } from "@/lib/map-config"
+import {
+  getTileLayerConfig,
+  OUTLINE_LABEL_MIN_ZOOM,
+} from "@/lib/map-config"
 import {
   geoJsonToLeafletPositions,
   getOutlineLabelPosition,
@@ -247,6 +250,8 @@ export default function CampusMap({
     return calculateMapCenter(allVisibleLocations, DDU_CAMPUS_CENTER)
   }, [allVisibleLocations])
 
+  const tileConfig = useMemo(() => getTileLayerConfig(), [])
+
   return (
     <div
       data-testid="campus-map"
@@ -259,10 +264,10 @@ export default function CampusMap({
         className="h-full w-full z-0"
       >
         <TileLayer
-          attribution={DEFAULT_TILE_CONFIG.attribution}
-          url={DEFAULT_TILE_CONFIG.url}
-          subdomains={DEFAULT_TILE_CONFIG.subdomains}
-          maxZoom={DEFAULT_TILE_CONFIG.maxZoom}
+          attribution={tileConfig.attribution}
+          url={tileConfig.url}
+          subdomains={tileConfig.subdomains}
+          maxZoom={tileConfig.maxZoom}
         />
 
         <MapBoundsController visibleLocations={allVisibleLocations} />
