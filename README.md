@@ -46,11 +46,12 @@ Copy the sample environment file to `.env.local`:
 cp .env.example .env.local
 ```
 
-Fill in your Supabase credentials:
+Fill in your configuration in `.env.local`:
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (optional, for administrative scripts)
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key
+- `NEXT_PUBLIC_CARTO_BASEMAPS_KEY`: (Optional) Free CARTO Basemaps API key from [https://carto.com/basemaps/apikey](https://carto.com/basemaps/apikey). Note: obtaining an API key from CARTO is completely free. When set, the map uses CARTO Positron raster tiles. When omitted or empty, the application cleanly falls back to standard OpenStreetMap tiles without watermarks.
+- `SUPABASE_SERVICE_ROLE_KEY`: (Optional) For administrative scripts
 
 4. Run the development server:
 

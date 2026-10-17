@@ -50,6 +50,9 @@ export function LocationForm({
     floor: initialData?.floor !== null && initialData?.floor !== undefined ? String(initialData.floor) : "",
     opening_hours: initialData?.opening_hours || "",
     photo_url: initialData?.photo_url || "",
+    outline: initialData?.outline
+      ? JSON.stringify(initialData.outline, null, 2)
+      : "",
   })
 
   const [error, setError] = useState<string | null>(null)
@@ -78,6 +81,7 @@ export function LocationForm({
       floor: formData.floor || null,
       opening_hours: formData.opening_hours || null,
       photo_url: formData.photo_url || null,
+      outline: formData.outline || null,
     }
 
     startTransition(async () => {
@@ -411,6 +415,34 @@ export function LocationForm({
           {fieldErrors.photo_url && (
             <p className="mt-1 text-xs text-destructive">
               {fieldErrors.photo_url[0]}
+            </p>
+          )}
+        </div>
+
+        {/* Building Outline (GeoJSON) */}
+        <div className="sm:col-span-2">
+          <label
+            htmlFor="outline"
+            className="block text-sm font-medium text-foreground"
+          >
+            Building outline (GeoJSON)
+          </label>
+          <textarea
+            id="outline"
+            rows={4}
+            value={formData.outline}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, outline: e.target.value }))
+            }
+            placeholder='Paste GeoJSON Polygon, MultiPolygon, Feature, or FeatureCollection (e.g. {"type": "Polygon", "coordinates": [...]})'
+            className="mt-1 block w-full font-mono rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Optional GeoJSON coordinates for drawing building boundaries on the campus map.
+          </p>
+          {fieldErrors.outline && (
+            <p className="mt-1 text-xs text-destructive">
+              {fieldErrors.outline[0]}
             </p>
           )}
         </div>
