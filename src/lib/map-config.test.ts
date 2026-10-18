@@ -7,10 +7,36 @@ import {
 } from "./map-config"
 
 describe("map-config", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_CARTO_BASEMAPS_KEY", "")
+    resetCartoWarning()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+  })
+
   describe("with a key", () => {
     it("contains the key in the URL and credits both OpenStreetMap and CARTO", () => {
       const testKey = "test-carto-key-12345"
+      vi.stubEnv("NEXT_PUBLIC_CARTO_BASEMAPS_KEY", testKey)
       const config = getTileLayerConfig(testKey)
+
+      expect(config.url).toBe(
+        `https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png?key=${testKey}`
+      )
+      expect(config.url).toContain(testKey)
+      expect(config.subdomains).toBe("abcd")
+      expect(config.maxZoom).toBe(20)
+      expect(config.attribution).toContain("OpenStreetMap")
+      expect(config.attribution).toContain("CARTO")
+    })
+
+    it("uses the key from environment when called with no argument", () => {
+      const testKey = "test-carto-key-12345"
+      vi.stubEnv("NEXT_PUBLIC_CARTO_BASEMAPS_KEY", testKey)
+      const config = getTileLayerConfig()
 
       expect(config.url).toBe(
         `https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png?key=${testKey}`
@@ -26,6 +52,18 @@ describe("map-config", () => {
   describe("without a key", () => {
     it("falls back to OpenStreetMap tiles when key is undefined", () => {
       const config = getTileLayerConfig(undefined)
+
+      expect(config.url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+      expect(config.subdomains).toBe("abc")
+      expect(config.maxZoom).toBe(19)
+      expect(config.attribution).toContain("OpenStreetMap")
+      expect(config.attribution).not.toContain("CARTO")
+      expect(config.url).not.toContain("key=")
+      expect(config.attribution).not.toContain("key=")
+    })
+
+    it("falls back to OpenStreetMap tiles when called with no argument and env is empty", () => {
+      const config = getTileLayerConfig()
 
       expect(config.url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png")
       expect(config.subdomains).toBe("abc")
@@ -56,15 +94,6 @@ describe("map-config", () => {
   })
 
   describe("development warning", () => {
-    beforeEach(() => {
-      resetCartoWarning()
-    })
-
-    afterEach(() => {
-      vi.unstubAllEnvs()
-      vi.restoreAllMocks()
-    })
-
     it("logs exactly one console warning in development mode when key is missing", () => {
       vi.stubEnv("NODE_ENV", "development")
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
@@ -88,6 +117,15 @@ describe("map-config", () => {
       getTileLayerConfig(undefined)
       expect(warnSpy).not.toHaveBeenCalled()
     })
+
+    it("does not log warning when key is present", () => {
+      vi.stubEnv("NODE_ENV", "development")
+      vi.stubEnv("NEXT_PUBLIC_CARTO_BASEMAPS_KEY", "test-carto-key")
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+      getTileLayerConfig()
+      expect(warnSpy).not.toHaveBeenCalled()
+    })
   })
 
   describe("constants and defaults", () => {
@@ -103,3 +141,4 @@ describe("map-config", () => {
     })
   })
 })
+
