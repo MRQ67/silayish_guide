@@ -110,6 +110,74 @@ describe("map-utils", () => {
       )
       expect(getMapMarkers([])).toEqual([])
     })
+
+    it("excludes locations that have an outline from markers", () => {
+      const locationWithOutline: Location = {
+        ...validBuilding,
+        outline: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [41.836, 9.617],
+              [41.837, 9.617],
+              [41.837, 9.618],
+              [41.836, 9.618],
+              [41.836, 9.617],
+            ],
+          ],
+        },
+      }
+      const markers = getMapMarkers([locationWithOutline, validLibrary])
+      expect(markers).toHaveLength(1)
+      expect(markers[0].id).toBe("loc-2")
+    })
+
+    it("excludes child locations whose parent has an outline", () => {
+      const parentWithOutline: Location = {
+        id: "parent-1",
+        name: "Admin Complex",
+        type: "building",
+        code: "B-001",
+        lat: 9.6178,
+        lng: 41.8362,
+        outline: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [41.836, 9.617],
+              [41.837, 9.617],
+              [41.837, 9.618],
+              [41.836, 9.618],
+              [41.836, 9.617],
+            ],
+          ],
+        },
+      }
+
+      const childLocation: Location = {
+        id: "child-1",
+        parent_id: "parent-1",
+        name: "Finance Office",
+        type: "office",
+        code: "B-001A",
+        lat: 9.6178,
+        lng: 41.8362,
+      }
+
+      const standaloneLocation: Location = {
+        id: "loc-std",
+        name: "Campus Gate",
+        type: "facility",
+        code: null,
+        lat: 9.615,
+        lng: 41.834,
+      }
+
+      const all = [parentWithOutline, childLocation, standaloneLocation]
+      const markers = getMapMarkers([childLocation, standaloneLocation], all)
+      expect(markers).toHaveLength(1)
+      expect(markers[0].id).toBe("loc-std")
+    })
   })
 
   describe("calculateMapBounds", () => {
