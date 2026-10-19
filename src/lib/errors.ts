@@ -42,3 +42,15 @@ export function handleDatabaseMutationError(
   return handleLocationError(error, label)
 }
 
+export const DEFAULT_REPORT_ERROR_MESSAGE =
+  "We couldn't submit your report right now. Please try again later."
+
+export function handleReportError(
+  error: unknown,
+  label: string = "[reports] error"
+): string {
+  console.error(label, error)
+  return DEFAULT_REPORT_ERROR_MESSAGE
+}
+
+

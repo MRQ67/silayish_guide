@@ -57,3 +57,14 @@ export interface Location {
   created_at?: string
   updated_at?: string
 }
+
+export type FeedbackStatus = "open" | "reviewed" | "resolved"
+
+export interface FeedbackReport {
+  id: string
+  location_id: string | null
+  message: string
+  status: FeedbackStatus
+  created_at: string
+}
+
