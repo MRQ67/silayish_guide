@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useId, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { createPortal } from "react-dom"
 import { AlertCircle, CheckCircle2, Flag, Loader2, X } from "lucide-react"
 import { submitReportAction } from "@/app/actions/report"
@@ -12,18 +19,25 @@ export interface ReportProblemDialogProps {
   className?: string
 }
 
+const emptySubscribe = () => () => {}
+
 export function ReportProblemDialog({
   locationId,
   locationName,
   className = "",
 }: ReportProblemDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
   const [message, setMessage] = useState("")
   const [honeypot, setHoneypot] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
 
   const triggerRef = useRef<HTMLButtonElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -35,9 +49,20 @@ export function ReportProblemDialog({
   const textareaId = useId()
   const honeypotId = useId()
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const handleClose = useCallback(() => {
+    setIsOpen(false)
+    // If completed successfully, reset form state for next time
+    if (isSuccess) {
+      setMessage("")
+      setHoneypot("")
+      setIsSuccess(false)
+    }
+    setErrorMessage(null)
+    // Return focus to trigger button
+    setTimeout(() => {
+      triggerRef.current?.focus()
+    }, 0)
+  }, [isSuccess])
 
   // Focus management: move focus in on open, return to trigger button on close
   useEffect(() => {
@@ -84,27 +109,12 @@ export function ReportProblemDialog({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, isSuccess])
+  }, [isOpen, isSuccess, handleClose])
 
   const handleOpen = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsOpen(true)
     setErrorMessage(null)
-  }
-
-  const handleClose = () => {
-    setIsOpen(false)
-    // If completed successfully, reset form state for next time
-    if (isSuccess) {
-      setMessage("")
-      setHoneypot("")
-      setIsSuccess(false)
-    }
-    setErrorMessage(null)
-    // Return focus to trigger button
-    setTimeout(() => {
-      triggerRef.current?.focus()
-    }, 0)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -306,7 +316,7 @@ export function ReportProblemDialog({
         <span>Report a problem</span>
       </button>
 
-      {mounted && createPortal(dialogContent, document.body)}
+      {isMounted && createPortal(dialogContent, document.body)}
     </div>
   )
 }

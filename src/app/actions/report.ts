@@ -43,7 +43,7 @@ export async function submitReportAction(
       location_id,
       message,
       status: "open",
-    })
+    } as never)
 
     if (error) {
       const friendlyMessage = handleReportError(error, "[reports] insert failed")
