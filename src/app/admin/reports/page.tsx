@@ -1,7 +1,14 @@
+import { redirect } from "next/navigation"
 import { connection } from "next/server"
 import { requireAdmin } from "@/lib/auth"
-import { handleLocationError } from "@/lib/errors"
-import { attachLocationToReports, type LocationLookupItem } from "@/lib/report-utils"
+import { handleAdminReportError, handleLocationError } from "@/lib/errors"
+import {
+  attachLocationToReports,
+  clampPageNumber,
+  getResetPaginationUrl,
+  isPaginationOutOfRangeError,
+  type LocationLookupItem,
+} from "@/lib/report-utils"
 import type { FeedbackReport } from "@/lib/types"
 import { AdminHeader } from "@/components/admin/admin-header"
 import {
@@ -29,21 +36,18 @@ export default async function AdminReportsPage({
   const resolvedSearchParams = await searchParams
   const rawStatus = resolvedSearchParams.status
   const currentStatus: "open" | "reviewed" | "resolved" | "all" =
-    rawStatus === "reviewed" ||
-    rawStatus === "resolved" ||
-    rawStatus === "all"
+    rawStatus === "reviewed" || rawStatus === "resolved" || rawStatus === "all"
       ? rawStatus
       : "open"
 
-  const parsedPage = parseInt(resolvedSearchParams.page || "1", 10)
-  const currentPage =
-    Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1
+  const currentPage = clampPageNumber(resolvedSearchParams.page)
   const offset = (currentPage - 1) * PAGE_SIZE
 
   let reports: AdminReportItem[] = []
   let totalCount = 0
   let openCount = 0
   let errorMessage: string | null = null
+  let redirectTarget: string | null = null
 
   try {
     // 1. Fetch total count of open reports for header badge
@@ -70,17 +74,21 @@ export default async function AdminReportsPage({
     } = await query.range(offset, offset + PAGE_SIZE - 1)
 
     if (reportsError) {
-      errorMessage = handleLocationError(
-        reportsError,
-        "[admin] reports query failed"
-      )
+      if (isPaginationOutOfRangeError(reportsError)) {
+        redirectTarget = getResetPaginationUrl(currentStatus)
+      } else {
+        errorMessage = handleAdminReportError(
+          reportsError,
+          "We couldn't load feedback reports right now. Please try again later.",
+          "[admin] reports query failed"
+        )
+      }
     } else {
       totalCount = filteredCount ?? 0
 
       // 3. Query 2: Load needed locations in a separate query and join them in code
       // (avoiding PostgREST relationship embeds)
-      const rawReportsList =
-        (rawReports as unknown as FeedbackReport[]) || []
+      const rawReportsList = (rawReports as unknown as FeedbackReport[]) || []
       const locationIds = Array.from(
         new Set(
           rawReportsList
@@ -110,7 +118,19 @@ export default async function AdminReportsPage({
       reports = attachLocationToReports(rawReportsList, locations)
     }
   } catch (err) {
-    errorMessage = handleLocationError(err, "[admin] reports load exception")
+    if (isPaginationOutOfRangeError(err)) {
+      redirectTarget = getResetPaginationUrl(currentStatus)
+    } else {
+      errorMessage = handleAdminReportError(
+        err,
+        "We couldn't load feedback reports right now. Please try again later.",
+        "[admin] reports load exception"
+      )
+    }
+  }
+
+  if (redirectTarget) {
+    redirect(redirectTarget)
   }
 
   return (

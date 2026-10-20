@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth"
-import { handleReportError } from "@/lib/errors"
+import {
+  DEFAULT_ADMIN_DELETE_REPORT_ERROR_MESSAGE,
+  DEFAULT_ADMIN_UPDATE_REPORT_ERROR_MESSAGE,
+  handleAdminReportError,
+} from "@/lib/errors"
+import { checkMutationAffectedRow } from "@/lib/report-utils"
 import {
   deleteReportSchema,
   updateReportStatusSchema,
@@ -29,14 +34,16 @@ export async function updateReportStatusAction(
   }
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("feedback_reports")
-      .update({ status: parseResult.data.status } as never)
+      .update({ status: parseResult.data.status })
       .eq("id", parseResult.data.id)
+      .select("id")
 
     if (error) {
-      const friendlyMessage = handleReportError(
+      const friendlyMessage = handleAdminReportError(
         error,
+        DEFAULT_ADMIN_UPDATE_REPORT_ERROR_MESSAGE,
         "[admin] update report status failed"
       )
       return {
@@ -45,11 +52,21 @@ export async function updateReportStatusAction(
       }
     }
 
+    const check = checkMutationAffectedRow(data)
+    if (!check.affected) {
+      revalidatePath("/admin/reports")
+      return {
+        success: false,
+        error: check.message,
+      }
+    }
+
     revalidatePath("/admin/reports")
     return { success: true }
   } catch (err) {
-    const friendlyMessage = handleReportError(
+    const friendlyMessage = handleAdminReportError(
       err,
+      DEFAULT_ADMIN_UPDATE_REPORT_ERROR_MESSAGE,
       "[admin] update report status exception"
     )
     return {
@@ -73,14 +90,16 @@ export async function deleteReportAction(
   }
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("feedback_reports")
       .delete()
       .eq("id", parseResult.data.id)
+      .select("id")
 
     if (error) {
-      const friendlyMessage = handleReportError(
+      const friendlyMessage = handleAdminReportError(
         error,
+        DEFAULT_ADMIN_DELETE_REPORT_ERROR_MESSAGE,
         "[admin] delete report failed"
       )
       return {
@@ -89,11 +108,21 @@ export async function deleteReportAction(
       }
     }
 
+    const check = checkMutationAffectedRow(data)
+    if (!check.affected) {
+      revalidatePath("/admin/reports")
+      return {
+        success: false,
+        error: check.message,
+      }
+    }
+
     revalidatePath("/admin/reports")
     return { success: true }
   } catch (err) {
-    const friendlyMessage = handleReportError(
+    const friendlyMessage = handleAdminReportError(
       err,
+      DEFAULT_ADMIN_DELETE_REPORT_ERROR_MESSAGE,
       "[admin] delete report exception"
     )
     return {

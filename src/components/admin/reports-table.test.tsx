@@ -71,7 +71,9 @@ describe("ReportsTable", () => {
     // First report location
     expect(screen.getByText("Technology Center")).toBeDefined()
     expect(screen.getByText("TC-01")).toBeDefined()
-    expect(screen.getByText("Room 102 air conditioner is leaking water.")).toBeDefined()
+    expect(
+      screen.getByText("Room 102 air conditioner is leaking water.")
+    ).toBeDefined()
 
     // Second report deleted location
     expect(screen.getByText("Deleted location")).toBeDefined()
@@ -83,6 +85,24 @@ describe("ReportsTable", () => {
     expect(editLinks[0].getAttribute("href")).toBe(
       "/admin/locations/11111111-1111-1111-1111-111111111111/edit"
     )
+  })
+
+  it("formats dates consistently with Africa/Addis_Ababa timezone", () => {
+    render(
+      <ReportsTable
+        initialReports={sampleReports}
+        currentStatus="all"
+        currentPage={1}
+        totalCount={3}
+        pageSize={50}
+      />
+    )
+
+    // 2026-10-19T10:30:00Z is 1:30 PM in Africa/Addis_Ababa
+    const dateCell = screen.getByText(/Oct 19, 2026/i)
+    expect(dateCell).toBeDefined()
+    expect(dateCell.textContent).toContain("1:30")
+    expect(dateCell.textContent).toContain("PM")
   })
 
   it("renders status filter tabs with active tab highlighted", () => {
@@ -181,21 +201,67 @@ describe("ReportsTable", () => {
     expect(deleteSpy).not.toHaveBeenCalled()
   })
 
-  it("disables Previous button on page 1 and Next button on last page", () => {
+  it("wraps pagination controls in a nav element with aria-label='Reports pagination'", () => {
     render(
       <ReportsTable
         initialReports={sampleReports}
         currentStatus="open"
         currentPage={1}
-        totalCount={3}
+        totalCount={100}
         pageSize={50}
       />
     )
 
-    const prevButton = screen.getByRole("button", { name: /previous/i })
-    expect(prevButton.hasAttribute("disabled")).toBe(true)
+    const nav = screen.getByRole("navigation", { name: "Reports pagination" })
+    expect(nav).toBeDefined()
+  })
 
-    const nextButton = screen.getByRole("button", { name: /next/i })
+  it("disables Previous button on page 1 as non-link, and renders Next as link without nested buttons", () => {
+    render(
+      <ReportsTable
+        initialReports={sampleReports}
+        currentStatus="open"
+        currentPage={1}
+        totalCount={100}
+        pageSize={50}
+      />
+    )
+
+    // Disabled control is a disabled button, NOT a link
+    const prevButton = screen.getByRole("button", { name: "Previous page" })
+    expect(prevButton.hasAttribute("disabled")).toBe(true)
+    expect(prevButton.closest("a")).toBeNull()
+
+    // Enabled control is a link with aria-label="Next page"
+    const nextLink = screen.getByRole("link", { name: "Next page" })
+    expect(nextLink.getAttribute("href")).toBe(
+      "/admin/reports?status=open&page=2"
+    )
+    // Confirm no nested button inside the link
+    expect(nextLink.querySelector("button")).toBeNull()
+  })
+
+  it("renders Previous as link and Next as disabled button on the last page", () => {
+    render(
+      <ReportsTable
+        initialReports={sampleReports}
+        currentStatus="reviewed"
+        currentPage={2}
+        totalCount={100}
+        pageSize={50}
+      />
+    )
+
+    // Previous is enabled link
+    const prevLink = screen.getByRole("link", { name: "Previous page" })
+    expect(prevLink.getAttribute("href")).toBe(
+      "/admin/reports?status=reviewed&page=1"
+    )
+    expect(prevLink.querySelector("button")).toBeNull()
+
+    // Next is disabled button
+    const nextButton = screen.getByRole("button", { name: "Next page" })
     expect(nextButton.hasAttribute("disabled")).toBe(true)
+    expect(nextButton.closest("a")).toBeNull()
   })
 })

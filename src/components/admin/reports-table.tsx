@@ -4,12 +4,13 @@ import { useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { CodeBadge } from "@/components/code-badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import type { FeedbackStatus } from "@/lib/types"
 import {
   deleteReportAction,
   updateReportStatusAction,
 } from "@/app/admin/reports/actions"
+import { formatDate } from "@/lib/report-utils"
 import { cn } from "@/lib/utils"
 
 export interface AdminReportItem {
@@ -93,21 +94,6 @@ export function ReportsTable({
     })
   }
 
-  const formatDate = (isoString: string): string => {
-    try {
-      const date = new Date(isoString)
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    } catch {
-      return isoString
-    }
-  }
-
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const hasPrevious = currentPage > 1
   const hasNext = currentPage * pageSize < totalCount
@@ -134,7 +120,11 @@ export function ReportsTable({
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-        <div className="flex items-center gap-1.5" role="tablist" aria-label="Status filters">
+        <div
+          className="flex items-center gap-1.5"
+          role="tablist"
+          aria-label="Status filters"
+        >
           {STATUS_FILTERS.map((filter) => {
             const isActive = currentStatus === filter.value
             return (
@@ -157,9 +147,7 @@ export function ReportsTable({
         </div>
 
         <div className="text-xs text-muted-foreground">
-          {totalCount === 1
-            ? "1 report found"
-            : `${totalCount} reports found`}
+          {totalCount === 1 ? "1 report found" : `${totalCount} reports found`}
         </div>
       </div>
 
@@ -180,7 +168,10 @@ export function ReportsTable({
               <th scope="col" className="px-4 py-3 whitespace-nowrap">
                 Status
               </th>
-              <th scope="col" className="px-4 py-3 text-right whitespace-nowrap">
+              <th
+                scope="col"
+                className="px-4 py-3 text-right whitespace-nowrap"
+              >
                 Actions
               </th>
             </tr>
@@ -366,17 +357,25 @@ export function ReportsTable({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <nav
+          aria-label="Reports pagination"
+          className="flex items-center gap-2"
+        >
           {hasPrevious ? (
             <Link
               href={`/admin/reports?status=${currentStatus}&page=${currentPage - 1}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              aria-label="Previous page"
             >
-              <Button variant="outline" size="sm">
-                Previous
-              </Button>
+              Previous
             </Link>
           ) : (
-            <Button variant="outline" size="sm" disabled>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              aria-label="Previous page"
+            >
               Previous
             </Button>
           )}
@@ -384,17 +383,17 @@ export function ReportsTable({
           {hasNext ? (
             <Link
               href={`/admin/reports?status=${currentStatus}&page=${currentPage + 1}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+              aria-label="Next page"
             >
-              <Button variant="outline" size="sm">
-                Next
-              </Button>
+              Next
             </Link>
           ) : (
-            <Button variant="outline" size="sm" disabled>
+            <Button variant="outline" size="sm" disabled aria-label="Next page">
               Next
             </Button>
           )}
-        </div>
+        </nav>
       </div>
     </div>
   )

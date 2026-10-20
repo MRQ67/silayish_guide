@@ -33,13 +33,22 @@ export const deleteReportSchema = z.object({
 export type DeleteReportInput = z.infer<typeof deleteReportSchema>
 
 /**
- * Returns true if a honeypot field is filled with non-empty content.
+ * Returns true if any honeypot field (website, hp) is filled with non-empty content after trimming.
+ * Checks each field independently so that an empty string in one does not mask content in another.
  * When true, callers should pretend success and store nothing.
  */
 export function isHoneypotTriggered(input: Record<string, unknown>): boolean {
-  const hpValue = input.website ?? input.hp
-  if (typeof hpValue === "string" && hpValue.trim().length > 0) {
-    return true
+  if (!input || typeof input !== "object") {
+    return false
   }
+
+  const honeypotKeys = ["website", "hp"]
+  for (const key of honeypotKeys) {
+    const value = input[key]
+    if (typeof value === "string" && value.trim().length > 0) {
+      return true
+    }
+  }
+
   return false
 }

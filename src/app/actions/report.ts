@@ -2,7 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { handleReportError } from "@/lib/errors"
-import { isHoneypotTriggered, submitReportSchema } from "@/lib/validations/report"
+import {
+  isHoneypotTriggered,
+  submitReportSchema,
+} from "@/lib/validations/report"
 
 export interface SubmitReportResult {
   success: boolean
@@ -43,10 +46,13 @@ export async function submitReportAction(
       location_id,
       message,
       status: "open",
-    } as never)
+    })
 
     if (error) {
-      const friendlyMessage = handleReportError(error, "[reports] insert failed")
+      const friendlyMessage = handleReportError(
+        error,
+        "[reports] insert failed"
+      )
       return {
         success: false,
         error: friendlyMessage,
