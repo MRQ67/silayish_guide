@@ -42,3 +42,29 @@ export function handleDatabaseMutationError(
   return handleLocationError(error, label)
 }
 
+export const DEFAULT_REPORT_ERROR_MESSAGE =
+  "We couldn't submit your report right now. Please try again later."
+
+export const DEFAULT_ADMIN_UPDATE_REPORT_ERROR_MESSAGE =
+  "We couldn't update that report. Please try again."
+
+export const DEFAULT_ADMIN_DELETE_REPORT_ERROR_MESSAGE =
+  "We couldn't delete that report. Please try again."
+
+export function handleReportError(
+  error: unknown,
+  label: string = "[reports] error",
+  customMessage: string = DEFAULT_REPORT_ERROR_MESSAGE
+): string {
+  console.error(label, error)
+  return customMessage
+}
+
+export function handleAdminReportError(
+  error: unknown,
+  customMessage: string = DEFAULT_ADMIN_UPDATE_REPORT_ERROR_MESSAGE,
+  label: string = "[admin] report operation error"
+): string {
+  console.error(label, error)
+  return customMessage
+}

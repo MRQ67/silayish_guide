@@ -28,7 +28,7 @@ export default async function NewLocationPage() {
 
   return (
     <div className="min-h-screen bg-background font-sans">
-      <AdminHeader userEmail={user.email} />
+      <AdminHeader userEmail={user.email} activeSection="locations" />
 
       <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <div className="mb-6 flex items-center justify-between">

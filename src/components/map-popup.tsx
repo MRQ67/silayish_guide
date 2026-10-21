@@ -1,5 +1,6 @@
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
+import { ReportProblemDialog } from "@/components/report-problem-dialog"
 
 export interface MapPopupProps {
   location: Location
@@ -27,6 +28,13 @@ export function MapPopup({ location, className = "" }: MapPopupProps) {
           {location.opening_hours}
         </div>
       )}
+      <div className="pt-1 border-t border-border/60">
+        <ReportProblemDialog
+          locationId={location.id}
+          locationName={location.name}
+        />
+      </div>
     </div>
   )
 }
+
