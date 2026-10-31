@@ -35,6 +35,7 @@ import {
 } from "@/lib/outline-utils"
 import { calculateOutlineBounds } from "@/lib/validations/outline"
 import { MapPopup } from "@/components/map-popup"
+import { LocateControl } from "@/components/locate-control"
 
 fixLeafletDefaultIcon()
 
@@ -361,6 +362,9 @@ export default function CampusMap({
             </Popup>
           </Marker>
         ))}
+
+        {/* Floating Geolocation Control */}
+        <LocateControl />
       </MapContainer>
     </div>
   )

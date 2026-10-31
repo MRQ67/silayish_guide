@@ -36,27 +36,46 @@ export function CampusExplorer({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null
   )
+
+  // Initialize selectedLocation from URL ?location= parameter on initial render
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    null
+    () => {
+      if (typeof window === "undefined") return null
+      const params = new URLSearchParams(window.location.search)
+      const locationParam = params.get("location")
+      if (!locationParam) return null
+
+      const normalizedParam = normalizeCode(locationParam)
+      return (
+        initialLocations.find(
+          (loc) =>
+            (loc.code && normalizeCode(loc.code) === normalizedParam) ||
+            loc.id === locationParam
+        ) || null
+      )
+    }
   )
 
-  // On mount: inspect URL search params for deep-linked ?location=
+  // Listen to browser Back/Forward navigation
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const params = new URLSearchParams(window.location.search)
-    const locationParam = params.get("location")
-    if (!locationParam) return
-
-    const normalizedParam = normalizeCode(locationParam)
-    const match = initialLocations.find(
-      (loc) =>
-        (loc.code && normalizeCode(loc.code) === normalizedParam) ||
-        loc.id === locationParam
-    )
-
-    if (match) {
-      setSelectedLocation(match)
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search)
+      const locationParam = params.get("location")
+      if (!locationParam) {
+        setSelectedLocation(null)
+        return
+      }
+      const normalizedParam = normalizeCode(locationParam)
+      const match = initialLocations.find(
+        (loc) =>
+          (loc.code && normalizeCode(loc.code) === normalizedParam) ||
+          loc.id === locationParam
+      )
+      setSelectedLocation(match || null)
     }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
   }, [initialLocations])
 
   // Derive categories from initialCategories or unique locations
