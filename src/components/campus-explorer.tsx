@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import {
   Layers,
@@ -136,18 +136,32 @@ export function CampusExplorer({
     return outlinesCount + markersCount
   }, [filteredLocations, initialLocations])
 
-  // Scroll the selected location list item into view when selected from the map outline or marker
+  const lastSelectedIdRef = useRef<string | null>(null)
+
+  // When selectedLocation becomes null, restore focus and scroll to the item
   useEffect(() => {
-    if (!selectedLocation) return
-    const el = document.getElementById(`location-item-${selectedLocation.id}`)
-    if (el && typeof el.scrollIntoView === "function") {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    if (!selectedLocation && lastSelectedIdRef.current) {
+      const el = document.getElementById(
+        `location-item-${lastSelectedIdRef.current}`
+      )
+      if (el) {
+        if (typeof el.scrollIntoView === "function") {
+          el.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        }
+        if (typeof el.focus === "function") {
+          el.focus()
+        }
+      }
     }
   }, [selectedLocation])
 
   const handleSelectLocation = (location: Location) => {
+    lastSelectedIdRef.current = location.id
     setSelectedLocation(location)
     setActiveTab("locations")
+    if (mobileView === "list") {
+      setMobileView("map")
+    }
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href)
       const param = location.code || location.id
@@ -203,9 +217,17 @@ export function CampusExplorer({
       >
         {/* Navigation Tabs: Locations vs Campus Services */}
         <div className="flex items-center border-b border-border bg-card/60 px-3 py-1.5 text-xs font-medium">
-          <div className="flex w-full items-center rounded-lg bg-muted/60 p-0.5">
+          <div
+            role="tablist"
+            aria-label="Campus Directory sections"
+            className="flex w-full items-center rounded-lg bg-muted/60 p-0.5"
+          >
             <button
               type="button"
+              role="tab"
+              id="tab-locations"
+              aria-selected={activeTab === "locations"}
+              aria-controls="panel-locations"
               data-testid="tab-locations"
               onClick={() => setActiveTab("locations")}
               className={cn(
@@ -215,11 +237,15 @@ export function CampusExplorer({
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <MapPin className="h-3.5 w-3.5" />
+              <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Places ({initialLocations.length})</span>
             </button>
             <button
               type="button"
+              role="tab"
+              id="tab-services"
+              aria-selected={activeTab === "services"}
+              aria-controls="panel-services"
               data-testid="tab-services"
               onClick={() => {
                 setActiveTab("services")
@@ -232,7 +258,7 @@ export function CampusExplorer({
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Services {initialServices.length > 0 && `(${initialServices.length})`}</span>
             </button>
           </div>
@@ -240,23 +266,37 @@ export function CampusExplorer({
 
         {/* Tab Content: Services */}
         {activeTab === "services" ? (
-          <ServicesList
-            services={initialServices}
-            allLocations={initialLocations}
-            onSelectLocation={handleSelectLocation}
-          />
-        ) : selectedLocation ? (
-          /* When a location is selected, display Rich Detail Panel */
-          <LocationDetailPanel
-            location={selectedLocation}
-            allLocations={initialLocations}
-            onBack={handleDeselectLocation}
-            onSelectLocation={handleSelectLocation}
-          />
+          <div
+            id="panel-services"
+            role="tabpanel"
+            aria-labelledby="tab-services"
+            className="flex flex-1 flex-col overflow-hidden"
+          >
+            <ServicesList
+              services={initialServices}
+              allLocations={initialLocations}
+              onSelectLocation={handleSelectLocation}
+            />
+          </div>
         ) : (
-          /* Locations Tab: Search + Categories + List */
-          <>
-            <div className="border-b border-border p-3 sm:p-4">
+          <div
+            id="panel-locations"
+            role="tabpanel"
+            aria-labelledby="tab-locations"
+            className="flex flex-1 flex-col overflow-hidden"
+          >
+            {selectedLocation ? (
+              /* When a location is selected, display Rich Detail Panel */
+              <LocationDetailPanel
+                location={selectedLocation}
+                allLocations={initialLocations}
+                onBack={handleDeselectLocation}
+                onSelectLocation={handleSelectLocation}
+              />
+            ) : (
+              /* Locations Tab: Search + Categories + List */
+              <>
+                <div className="border-b border-border p-3 sm:p-4">
               <div className="relative flex items-center">
                 <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
                 <input
@@ -400,13 +440,20 @@ export function CampusExplorer({
             </div>
           </>
         )}
-      </section>
+      </div>
+    )}
+  </section>
 
       {/* Mobile Floating View Switcher (Map / Split / List) */}
-      <div className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[500] flex items-center rounded-full border border-border bg-card/95 px-1 py-0.5 shadow-lg backdrop-blur">
+      <div
+        role="group"
+        aria-label="View layout"
+        className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[500] flex items-center rounded-full border border-border bg-card/95 px-1 py-0.5 shadow-lg backdrop-blur"
+      >
         <button
           type="button"
           onClick={() => setMobileView("map")}
+          aria-pressed={mobileView === "map"}
           data-testid="mobile-view-map"
           className={cn(
             "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
@@ -415,12 +462,13 @@ export function CampusExplorer({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <MapIcon className="h-3.5 w-3.5" />
+          <MapIcon className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Map</span>
         </button>
         <button
           type="button"
           onClick={() => setMobileView("split")}
+          aria-pressed={mobileView === "split"}
           data-testid="mobile-view-split"
           className={cn(
             "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
@@ -429,12 +477,13 @@ export function CampusExplorer({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <SplitSquareVertical className="h-3.5 w-3.5" />
+          <SplitSquareVertical className="h-3.5 w-3.5" aria-hidden="true" />
           <span>Split</span>
         </button>
         <button
           type="button"
           onClick={() => setMobileView("list")}
+          aria-pressed={mobileView === "list"}
           data-testid="mobile-view-list"
           className={cn(
             "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
@@ -443,7 +492,7 @@ export function CampusExplorer({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <MapPin className="h-3.5 w-3.5" />
+          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
           <span>List</span>
         </button>
       </div>

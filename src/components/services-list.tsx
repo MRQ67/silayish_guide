@@ -1,6 +1,7 @@
 "use client"
 
-import { Clock, Mail, MapPin } from "lucide-react"
+import { useMemo } from "react"
+import { Clock, Mail, MapPin, Phone } from "lucide-react"
 import type { Location, Service } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
 
@@ -15,6 +16,11 @@ export function ServicesList({
   allLocations,
   onSelectLocation,
 }: ServicesListProps) {
+  // O(1) location lookup map
+  const locationsMap = useMemo(() => {
+    return new Map(allLocations.map((l) => [l.id, l]))
+  }, [allLocations])
+
   if (services.length === 0) {
     return (
       <div
@@ -38,9 +44,12 @@ export function ServicesList({
     >
       {services.map((service) => {
         const linkedLocation = service.location_id
-          ? allLocations.find((l) => l.id === service.location_id) ||
-            service.location
+          ? locationsMap.get(service.location_id) || service.location
           : service.location
+
+        const contactStr = service.contact?.trim()
+        const isEmail = contactStr ? contactStr.includes("@") : false
+        const isPhone = contactStr ? /^[\d+\s().-]+$/.test(contactStr) : false
 
         return (
           <article
@@ -79,14 +88,28 @@ export function ServicesList({
                   <span>{service.hours}</span>
                 </span>
               )}
-              {service.contact && (
-                <a
-                  href={`mailto:${service.contact}`}
-                  className="flex items-center gap-1 hover:text-foreground hover:underline"
-                >
-                  <Mail className="h-3 w-3" />
-                  <span>{service.contact}</span>
-                </a>
+              {contactStr && (
+                isEmail ? (
+                  <a
+                    href={`mailto:${contactStr}`}
+                    className="flex items-center gap-1 hover:text-foreground hover:underline"
+                  >
+                    <Mail className="h-3 w-3" />
+                    <span>{contactStr}</span>
+                  </a>
+                ) : isPhone ? (
+                  <a
+                    href={`tel:${contactStr.replace(/\s+/g, "")}`}
+                    className="flex items-center gap-1 hover:text-foreground hover:underline"
+                  >
+                    <Phone className="h-3 w-3" />
+                    <span>{contactStr}</span>
+                  </a>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <span>{contactStr}</span>
+                  </span>
+                )
               )}
               {linkedLocation && (
                 <span className="flex items-center gap-1 font-medium text-foreground">

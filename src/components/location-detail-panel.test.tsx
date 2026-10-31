@@ -111,4 +111,37 @@ describe("LocationDetailPanel", () => {
     fireEvent.click(parentLink)
     expect(handleSelect).toHaveBeenCalledWith(parentLocation)
   })
+
+  it("dismisses panel when user presses Escape key", () => {
+    const handleBack = vi.fn()
+    const handleSelect = vi.fn()
+
+    render(
+      <LocationDetailPanel
+        location={parentLocation}
+        allLocations={allLocations}
+        onBack={handleBack}
+        onSelectLocation={handleSelect}
+      />
+    )
+
+    fireEvent.keyDown(window, { key: "Escape" })
+    expect(handleBack).toHaveBeenCalledTimes(1)
+  })
+
+  it("calculates directions link from parent when child has no coordinates", () => {
+    render(
+      <LocationDetailPanel
+        location={childLocation}
+        allLocations={allLocations}
+        onBack={vi.fn()}
+        onSelectLocation={vi.fn()}
+      />
+    )
+
+    const directionsLink = screen.getByRole("link", { name: /directions/i })
+    expect(directionsLink.getAttribute("href")).toContain(
+      `destination=${parentLocation.lat},${parentLocation.lng}`
+    )
+  })
 })

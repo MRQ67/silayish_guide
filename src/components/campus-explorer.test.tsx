@@ -184,8 +184,10 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     )
 
     const servicesTab = screen.getByTestId("tab-services")
+    expect(servicesTab.getAttribute("aria-selected")).toBe("false")
     fireEvent.click(servicesTab)
 
+    expect(servicesTab.getAttribute("aria-selected")).toBe("true")
     expect(screen.getByTestId("services-list")).toBeDefined()
     expect(screen.getByText("Registrar Office")).toBeDefined()
   })
@@ -203,12 +205,15 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     const splitBtn = screen.getByTestId("mobile-view-split")
 
     fireEvent.click(mapBtn)
+    expect(mapBtn.getAttribute("aria-pressed")).toBe("true")
     expect(mapBtn.className).toContain("bg-primary")
 
     fireEvent.click(listBtn)
+    expect(listBtn.getAttribute("aria-pressed")).toBe("true")
     expect(listBtn.className).toContain("bg-primary")
 
     fireEvent.click(splitBtn)
+    expect(splitBtn.getAttribute("aria-pressed")).toBe("true")
     expect(splitBtn.className).toContain("bg-primary")
   })
 })

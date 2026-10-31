@@ -1,11 +1,13 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { ArrowLeft, Clock, ExternalLink, Layers } from "lucide-react"
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
 import { CategoryIcon } from "@/components/category-icon"
 import { ShareLocationButton } from "@/components/share-location-button"
 import { ReportProblemDialog } from "@/components/report-problem-dialog"
+import { calculateOutlineCenter } from "@/lib/validations/outline"
 import { cn } from "@/lib/utils"
 
 export interface LocationDetailPanelProps {
@@ -16,6 +18,35 @@ export interface LocationDetailPanelProps {
   className?: string
 }
 
+function getEffectiveCoordinates(
+  loc: Location,
+  parentLoc: Location | null | undefined
+): { lat: number; lng: number } | null {
+  if (loc.lat != null && loc.lng != null) {
+    return { lat: loc.lat, lng: loc.lng }
+  }
+  if (loc.outline) {
+    try {
+      return calculateOutlineCenter(loc.outline)
+    } catch {
+      // ignore outline parsing failures
+    }
+  }
+  if (parentLoc) {
+    if (parentLoc.lat != null && parentLoc.lng != null) {
+      return { lat: parentLoc.lat, lng: parentLoc.lng }
+    }
+    if (parentLoc.outline) {
+      try {
+        return calculateOutlineCenter(parentLoc.outline)
+      } catch {
+        // ignore outline parsing failures
+      }
+    }
+  }
+  return null
+}
+
 export function LocationDetailPanel({
   location,
   allLocations,
@@ -23,6 +54,21 @@ export function LocationDetailPanel({
   onSelectLocation,
   className = "",
 }: LocationDetailPanelProps) {
+  const backButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Focus the back button when panel mounts and bind Escape key to close
+  useEffect(() => {
+    backButtonRef.current?.focus()
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        onBack()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onBack])
+
   // Find nested facilities/labs inside this parent building
   const childLocations = allLocations.filter(
     (l) => l.parent_id === location.id
@@ -33,10 +79,10 @@ export function LocationDetailPanel({
     ? allLocations.find((l) => l.id === location.parent_id)
     : null
 
-  const googleMapsDirectionsUrl =
-    location.lat != null && location.lng != null
-      ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`
-      : null
+  const effectiveCoords = getEffectiveCoordinates(location, parentLocation)
+  const googleMapsDirectionsUrl = effectiveCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${effectiveCoords.lat},${effectiveCoords.lng}`
+    : null
 
   return (
     <div
@@ -48,6 +94,7 @@ export function LocationDetailPanel({
     >
       {/* Back button */}
       <button
+        ref={backButtonRef}
         type="button"
         onClick={onBack}
         data-testid="detail-back-button"
@@ -137,10 +184,12 @@ export function LocationDetailPanel({
               href={googleMapsDirectionsUrl}
               target="_blank"
               rel="noopener noreferrer"
+              aria-label={`Directions to ${location.name} on Google Maps (opens in new tab)`}
               className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Directions</span>
+              <span className="sr-only">(opens in new tab)</span>
             </a>
           )}
         </div>

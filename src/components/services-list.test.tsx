@@ -77,4 +77,33 @@ describe("ServicesList", () => {
     expect(screen.getByTestId("services-empty")).toBeDefined()
     expect(screen.getByText("No campus services listed")).toBeDefined()
   })
+
+  it("formats email as mailto link and phone number as tel link", () => {
+    const servicesWithPhone: Service[] = [
+      {
+        id: "srv-clinic",
+        name: "Health Clinic",
+        contact: "+251 25 111 2233",
+      },
+      {
+        id: "srv-help",
+        name: "IT Helpdesk",
+        contact: "helpdesk@ddu.edu.et",
+      },
+    ]
+
+    render(
+      <ServicesList
+        services={servicesWithPhone}
+        allLocations={[]}
+        onSelectLocation={vi.fn()}
+      />
+    )
+
+    const phoneLink = screen.getByText("+251 25 111 2233").closest("a")
+    expect(phoneLink?.getAttribute("href")).toBe("tel:+251251112233")
+
+    const emailLink = screen.getByText("helpdesk@ddu.edu.et").closest("a")
+    expect(emailLink?.getAttribute("href")).toBe("mailto:helpdesk@ddu.edu.et")
+  })
 })

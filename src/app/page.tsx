@@ -57,11 +57,15 @@ async function LocationLoader() {
       locations = (locationsRes.data as Location[]) || []
     }
 
-    if (categoriesRes.data) {
+    if (categoriesRes.error) {
+      console.error("[categories] fetch error:", categoriesRes.error)
+    } else if (categoriesRes.data) {
       categories = (categoriesRes.data as Category[]) || []
     }
 
-    if (servicesRes.data) {
+    if (servicesRes.error) {
+      console.error("[services] fetch error:", servicesRes.error)
+    } else if (servicesRes.data) {
       services = (servicesRes.data as Service[]) || []
     }
   } catch (err) {
