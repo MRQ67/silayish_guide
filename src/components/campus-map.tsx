@@ -36,6 +36,7 @@ import {
 import { calculateOutlineBounds } from "@/lib/validations/outline"
 import { MapPopup } from "@/components/map-popup"
 import { LocateControl } from "@/components/locate-control"
+import { useTheme } from "@/components/theme-provider"
 
 fixLeafletDefaultIcon()
 
@@ -194,6 +195,7 @@ export interface CampusMapProps {
   markers?: MapMarker[]
   selectedLocation: Location | null
   onSelectLocation?: (location: Location) => void
+  onUserLocationChange?: (coords: [number, number]) => void
   className?: string
 }
 
@@ -203,11 +205,20 @@ export default function CampusMap({
   markers,
   selectedLocation,
   onSelectLocation,
+  onUserLocationChange,
   className = "",
 }: CampusMapProps) {
   useEffect(() => {
     fixLeafletDefaultIcon()
   }, [])
+
+  let resolvedTheme: "light" | "dark" = "light"
+  try {
+    const themeCtx = useTheme()
+    resolvedTheme = themeCtx.resolvedTheme
+  } catch {
+    // rendered outside theme provider (e.g. standalone test)
+  }
 
   const markerRefs = useRef<Map<string, L.Marker>>(new Map())
   const polygonRefs = useRef<Map<string, L.Polygon>>(new Map())
@@ -251,7 +262,9 @@ export default function CampusMap({
     return calculateMapCenter(allVisibleLocations, DDU_CAMPUS_CENTER)
   }, [allVisibleLocations])
 
-  const tileConfig = useMemo(() => getTileLayerConfig(), [])
+  const tileConfig = useMemo(() => {
+    return getTileLayerConfig(undefined, resolvedTheme)
+  }, [resolvedTheme])
 
   return (
     <div
@@ -265,6 +278,7 @@ export default function CampusMap({
         className="h-full w-full z-0"
       >
         <TileLayer
+          key={`tile-${resolvedTheme}`}
           attribution={tileConfig.attribution}
           url={tileConfig.url}
           subdomains={tileConfig.subdomains}
@@ -312,17 +326,17 @@ export default function CampusMap({
               eventHandlers={{
                 click: () => onSelectLocation?.(location),
                 mouseover: (e) => {
-                  const layer = e.target
                   if (!isSelected) {
+                    const layer = e.target as L.Polygon
                     layer.setStyle({
-                      weight: 2.5,
-                      fillOpacity: 0.45,
+                      weight: style.weight + 1,
+                      fillOpacity: Math.min(style.fillOpacity + 0.15, 0.9),
                     })
                   }
                 },
                 mouseout: (e) => {
-                  const layer = e.target
                   if (!isSelected) {
+                    const layer = e.target as L.Polygon
                     layer.setStyle({
                       weight: style.weight,
                       fillOpacity: style.fillOpacity,
@@ -364,7 +378,7 @@ export default function CampusMap({
         ))}
 
         {/* Floating Geolocation Control */}
-        <LocateControl />
+        <LocateControl onLocationFound={onUserLocationChange} />
       </MapContainer>
     </div>
   )

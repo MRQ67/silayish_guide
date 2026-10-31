@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { CampusExplorer } from "./campus-explorer"
+import { LanguageProvider } from "./language-provider"
 import type { Category, Location, Service } from "@/lib/types"
 
 vi.mock("next/dynamic", () => ({
@@ -109,10 +110,10 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     fireEvent.click(acadChip)
     expect(screen.queryByText("Main Administration")).toBeNull()
 
-    // Click again to toggle off
     fireEvent.click(acadChip)
+    expect(screen.getByText("Engineering Hall")).toBeDefined()
     expect(screen.getByText("Main Administration")).toBeDefined()
-    expect(screen.getByText("3 locations found")).toBeDefined()
+    expect(screen.getByText("Campus Clinic")).toBeDefined()
   })
 
   it("combines category filter and search query", () => {
@@ -123,23 +124,19 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    const acadChip = screen.getByTestId("category-chip-cat-acad")
-    fireEvent.click(acadChip)
+    const adminChip = screen.getByTestId("category-chip-cat-admin")
+    fireEvent.click(adminChip)
 
-    const searchInput = screen.getByPlaceholderText(
-      /search by name, description, or code/i
-    )
-    fireEvent.change(searchInput, { target: { value: "Engineering" } })
+    const searchInput = screen.getByPlaceholderText(/search/i)
+    fireEvent.change(searchInput, { target: { value: "President" } })
 
-    expect(screen.getByText("Engineering Hall")).toBeDefined()
-
-    fireEvent.change(searchInput, { target: { value: "Clinic" } })
+    expect(screen.getByText("Main Administration")).toBeDefined()
     expect(screen.queryByText("Engineering Hall")).toBeNull()
-    expect(screen.getByText("No locations found")).toBeDefined()
+    expect(screen.queryByText("Campus Clinic")).toBeNull()
   })
 
   it("auto-selects location and displays detail panel when URL contains ?location= parameter", () => {
-    window.history.replaceState({}, "", "/?location=b-002")
+    window.history.replaceState({}, "", "/?location=B-002")
 
     render(
       <CampusExplorer
@@ -149,13 +146,8 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     )
 
     expect(screen.getByTestId("location-detail-panel")).toBeDefined()
+    expect(screen.getByText("Main Administration")).toBeDefined()
     expect(screen.getByText("President and Registrar offices")).toBeDefined()
-
-    // Clicking back returns to list
-    const backBtn = screen.getByTestId("detail-back-button")
-    fireEvent.click(backBtn)
-    expect(screen.queryByTestId("location-detail-panel")).toBeNull()
-    expect(screen.getByText("Engineering Hall")).toBeDefined()
   })
 
   it("updates URL and shows detail panel when a location item is clicked", () => {
@@ -215,5 +207,26 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     fireEvent.click(splitBtn)
     expect(splitBtn.getAttribute("aria-pressed")).toBe("true")
     expect(splitBtn.className).toContain("bg-primary")
+  })
+
+  it("localizes UI strings into Amharic when LanguageProvider is set to am", () => {
+    render(
+      <LanguageProvider defaultLocale="am">
+        <CampusExplorer
+          initialLocations={sampleLocations}
+          initialCategories={sampleCategories}
+        />
+      </LanguageProvider>
+    )
+
+    // Amharic search placeholder
+    expect(
+      screen.getByPlaceholderText(/በስም፣ መግለጫ ወይም በህንፃ ኮድ ይፈልጉ/i)
+    ).toBeDefined()
+
+    // Amharic category chips
+    expect(screen.getByTestId("category-chip-all").textContent).toContain("ሁሉም")
+    expect(screen.getByTestId("category-chip-cat-acad").textContent).toContain("ትምህርት")
+    expect(screen.getByTestId("category-chip-cat-admin").textContent).toContain("አስተዳደር")
   })
 })

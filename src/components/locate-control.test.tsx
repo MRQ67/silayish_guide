@@ -39,7 +39,8 @@ describe("LocateControl", () => {
     expect(button.getAttribute("title")).toBe("Locate me on campus")
   })
 
-  it("handles successful geolocation and triggers map flyTo", async () => {
+  it("handles successful geolocation and triggers map flyTo and onLocationFound", async () => {
+    const handleFound = vi.fn()
     const mockGetCurrentPosition = vi.fn().mockImplementation((success) => {
       success({
         coords: {
@@ -56,7 +57,7 @@ describe("LocateControl", () => {
       },
     })
 
-    render(<LocateControl />)
+    render(<LocateControl onLocationFound={handleFound} />)
 
     const button = screen.getByRole("button", {
       name: /locate me on campus/i,
@@ -69,6 +70,7 @@ describe("LocateControl", () => {
         animate: true,
         duration: 1.2,
       })
+      expect(handleFound).toHaveBeenCalledWith([9.6178, 41.8362])
       expect(screen.getByTestId("mock-circle")).toBeDefined()
       expect(screen.getByTestId("mock-marker")).toBeDefined()
     })

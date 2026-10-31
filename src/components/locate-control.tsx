@@ -22,9 +22,13 @@ export function createUserLocationIcon() {
 
 export interface LocateControlProps {
   className?: string
+  onLocationFound?: (coords: [number, number]) => void
 }
 
-export function LocateControl({ className = "" }: LocateControlProps) {
+export function LocateControl({
+  className = "",
+  onLocationFound,
+}: LocateControlProps) {
   const map = useMap()
   const [locating, setLocating] = useState(false)
   const [userPosition, setUserPosition] = useState<[number, number] | null>(
@@ -52,6 +56,7 @@ export function LocateControl({ className = "" }: LocateControlProps) {
         setUserPosition(coords)
         setAccuracy(pos.coords.accuracy)
         setLocating(false)
+        onLocationFound?.(coords)
 
         if (map && typeof map.flyTo === "function") {
           map.flyTo(coords, Math.max(map.getZoom(), 17), {

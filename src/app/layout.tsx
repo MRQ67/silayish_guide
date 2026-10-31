@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { DM_Sans, Stardos_Stencil } from "next/font/google"
 import { Header } from "@/components/header"
+import { ThemeProvider } from "@/components/theme-provider"
+import { LanguageProvider } from "@/components/language-provider"
 import "./globals.css"
 
 const dmSans = DM_Sans({
@@ -28,11 +30,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${dmSans.variable} ${stardosStencil.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
-        <Header />
-        <div className="flex flex-1 flex-col">{children}</div>
+      <body className="flex min-h-full flex-col bg-background text-foreground transition-colors duration-200">
+        <ThemeProvider defaultTheme="light">
+          <LanguageProvider defaultLocale="en">
+            <Header />
+            <div className="flex flex-1 flex-col">{children}</div>
+          </LanguageProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

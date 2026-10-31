@@ -1,3 +1,9 @@
+import type { Location } from "./types"
+import {
+  calculateOutlineCenter,
+  haversineDistanceMeters,
+} from "./validations/outline"
+
 export interface ParentRef {
   id: string
   name: string
@@ -53,4 +59,59 @@ export function attachParentNames<T extends LocationWithParentRelation>(
       },
     }
   })
+}
+
+/**
+ * Extracts effective geographical coordinates for a location,
+ * falling back to outline centroid or parent building coordinates.
+ */
+export function getLocationEffectiveCoordinates(
+  loc: Location,
+  allLocations?: Location[]
+): { lat: number; lng: number } | null {
+  if (loc.lat != null && loc.lng != null) {
+    return { lat: loc.lat, lng: loc.lng }
+  }
+  if (loc.outline) {
+    try {
+      return calculateOutlineCenter(loc.outline)
+    } catch {
+      // ignore outline parsing errors
+    }
+  }
+  if (loc.parent_id && allLocations) {
+    const parent = allLocations.find((l) => l.id === loc.parent_id)
+    if (parent) {
+      if (parent.lat != null && parent.lng != null) {
+        return { lat: parent.lat, lng: parent.lng }
+      }
+      if (parent.outline) {
+        try {
+          return calculateOutlineCenter(parent.outline)
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Calculates distance in meters between user coordinates and a location.
+ */
+export function getLocationDistanceMeters(
+  loc: Location,
+  userCoords: [number, number] | null | undefined,
+  allLocations?: Location[]
+): number | null {
+  if (!userCoords) return null
+  const coords = getLocationEffectiveCoordinates(loc, allLocations)
+  if (!coords) return null
+  return haversineDistanceMeters(
+    userCoords[0],
+    userCoords[1],
+    coords.lat,
+    coords.lng
+  )
 }

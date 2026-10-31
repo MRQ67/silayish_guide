@@ -16,20 +16,22 @@ export function resetCartoWarning(): void {
 
 /**
  * Builds the Leaflet TileLayer configuration.
- * - When a CARTO API key is provided: uses CARTO Positron raster tiles with maxZoom 20
- *   and attribution crediting both OpenStreetMap and CARTO.
+ * - When a CARTO API key is provided: uses CARTO raster tiles (Positron in light mode, Dark Matter in dark mode)
+ *   with maxZoom 20 and attribution crediting both OpenStreetMap and CARTO.
  * - When the key is missing or empty: falls back to standard OpenStreetMap tiles with
  *   maxZoom 19 and attribution crediting only OpenStreetMap contributors.
  *   In development mode, logs one console warning and avoids watermarked tiles.
  */
 export function getTileLayerConfig(
-  cartoKey: string | undefined = process.env.NEXT_PUBLIC_CARTO_BASEMAPS_KEY
+  cartoKey: string | undefined = process.env.NEXT_PUBLIC_CARTO_BASEMAPS_KEY,
+  theme: "light" | "dark" = "light"
 ): TileLayerConfig {
   const trimmedKey = cartoKey?.trim()
+  const variant = theme === "dark" ? "dark_all" : "light_all"
 
   if (trimmedKey) {
     return {
-      url: `https://{s}.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png?key=${encodeURIComponent(trimmedKey)}`,
+      url: `https://{s}.basemaps.cartocdn.com/rastertiles/${variant}/{z}/{x}/{y}.png?key=${encodeURIComponent(trimmedKey)}`,
       subdomains: "abcd",
       maxZoom: 20,
       attribution:

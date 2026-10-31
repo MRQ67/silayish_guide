@@ -4,6 +4,9 @@ import { useMemo } from "react"
 import { Clock, Mail, MapPin, Phone } from "lucide-react"
 import type { Location, Service } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
+import { useLanguage } from "@/components/language-provider"
+import type { TranslationDictionary } from "@/lib/i18n"
+import { translations } from "@/lib/i18n"
 
 export interface ServicesListProps {
   services: Service[]
@@ -16,6 +19,14 @@ export function ServicesList({
   allLocations,
   onSelectLocation,
 }: ServicesListProps) {
+  let t: TranslationDictionary = translations.en
+  try {
+    const langCtx = useLanguage()
+    t = langCtx.t
+  } catch {
+    // outside provider in unit tests
+  }
+
   // O(1) location lookup map
   const locationsMap = useMemo(() => {
     return new Map(allLocations.map((l) => [l.id, l]))
@@ -28,10 +39,10 @@ export function ServicesList({
         className="flex flex-col items-center justify-center p-8 text-center font-sans"
       >
         <p className="font-semibold text-foreground">
-          No campus services listed
+          {t.servicesEmptyTitle}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Administrative and student services will appear here.
+          {t.servicesEmptyDesc}
         </p>
       </div>
     )
@@ -70,7 +81,7 @@ export function ServicesList({
                   className="inline-flex shrink-0 items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <MapPin className="h-3 w-3" />
-                  <span>On Map</span>
+                  <span>{t.onMap}</span>
                 </button>
               )}
             </div>

@@ -85,4 +85,16 @@ describe("LocationListItem accessibility", () => {
 
     expect(handleClick).not.toHaveBeenCalled()
   })
+
+  it("displays distance badge when distanceMeters is provided", () => {
+    render(
+      <LocationListItem
+        location={sampleLocation}
+        distanceMeters={180}
+      />
+    )
+
+    const badge = screen.getByTestId("location-distance-badge")
+    expect(badge.textContent).toContain("~180 m away")
+  })
 })

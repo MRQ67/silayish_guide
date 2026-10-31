@@ -144,4 +144,19 @@ describe("LocationDetailPanel", () => {
       `destination=${parentLocation.lat},${parentLocation.lng}`
     )
   })
+
+  it("displays distance badge when distanceMeters is provided", () => {
+    render(
+      <LocationDetailPanel
+        location={parentLocation}
+        allLocations={allLocations}
+        onBack={vi.fn()}
+        onSelectLocation={vi.fn()}
+        distanceMeters={240}
+      />
+    )
+
+    const badge = screen.getByTestId("detail-distance-badge")
+    expect(badge.textContent).toContain("~240 m away")
+  })
 })

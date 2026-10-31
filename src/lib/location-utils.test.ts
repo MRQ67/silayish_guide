@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
   attachParentNames,
+  getLocationDistanceMeters,
+  getLocationEffectiveCoordinates,
   type LocationWithParentRelation,
 } from "./location-utils"
+import type { Location } from "./types"
 
 describe("attachParentNames", () => {
   it("attaches parent name, id, and code when parent exists in the list", () => {
@@ -123,5 +126,59 @@ describe("attachParentNames", () => {
     expect(result[1].floor).toBe(2)
     expect(result[1].customField).toBe("room-test")
     expect(result[1].parent?.name).toBe("Building 1")
+  })
+})
+
+describe("location distance and coordinate utilities", () => {
+  const parentLoc: Location = {
+    id: "p1",
+    name: "Engineering Complex",
+    code: "B-001",
+    type: "building",
+    lat: 9.6190,
+    lng: 41.8370,
+  }
+
+  const childLoc: Location = {
+    id: "c1",
+    name: "Robotics Lab",
+    code: "B-001-R1",
+    type: "lab",
+    parent_id: "p1",
+  }
+
+  it("extracts coordinates from location directly or from parent", () => {
+    expect(getLocationEffectiveCoordinates(parentLoc)).toEqual({
+      lat: 9.6190,
+      lng: 41.8370,
+    })
+
+    expect(getLocationEffectiveCoordinates(childLoc, [parentLoc])).toEqual({
+      lat: 9.6190,
+      lng: 41.8370,
+    })
+  })
+
+  it("computes distance in meters from user coordinates", () => {
+    const userCoords: [number, number] = [9.6190, 41.8370] // exact same spot
+    const dist = getLocationDistanceMeters(parentLoc, userCoords)
+    expect(dist).toBeCloseTo(0, 1)
+
+    // ~111 meters north (0.001 degree of latitude is roughly 111m)
+    const slightlyNorth: [number, number] = [9.6200, 41.8370]
+    const distNorth = getLocationDistanceMeters(parentLoc, slightlyNorth)
+    expect(distNorth).toBeGreaterThan(100)
+    expect(distNorth).toBeLessThan(125)
+  })
+
+  it("returns null when user coordinates or location coordinates are missing", () => {
+    expect(getLocationDistanceMeters(parentLoc, null)).toBeNull()
+    const nowhereLoc: Location = {
+      id: "nowhere",
+      name: "Virtual Portal",
+      code: "V-001",
+      type: "facility",
+    }
+    expect(getLocationDistanceMeters(nowhereLoc, [9.619, 41.837])).toBeNull()
   })
 })

@@ -1,13 +1,17 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { ArrowLeft, Clock, ExternalLink, Layers } from "lucide-react"
+import { ArrowLeft, Clock, ExternalLink, Layers, Navigation } from "lucide-react"
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
 import { CategoryIcon } from "@/components/category-icon"
 import { ShareLocationButton } from "@/components/share-location-button"
 import { ReportProblemDialog } from "@/components/report-problem-dialog"
 import { calculateOutlineCenter } from "@/lib/validations/outline"
+import { useLanguage } from "@/components/language-provider"
+import { formatDistance, getLocalizedCategoryName } from "@/lib/i18n"
+import type { Locale, TranslationDictionary } from "@/lib/i18n"
+import { translations } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 export interface LocationDetailPanelProps {
@@ -15,6 +19,7 @@ export interface LocationDetailPanelProps {
   allLocations: Location[]
   onBack: () => void
   onSelectLocation: (location: Location) => void
+  distanceMeters?: number | null
   className?: string
 }
 
@@ -52,8 +57,20 @@ export function LocationDetailPanel({
   allLocations,
   onBack,
   onSelectLocation,
+  distanceMeters,
   className = "",
 }: LocationDetailPanelProps) {
+  let locale: Locale = "en"
+  let t: TranslationDictionary = translations.en
+
+  try {
+    const langCtx = useLanguage()
+    locale = langCtx.locale
+    t = langCtx.t
+  } catch {
+    // outside provider in unit tests
+  }
+
   const backButtonRef = useRef<HTMLButtonElement>(null)
 
   // Focus the back button when panel mounts and bind Escape key to close
@@ -84,6 +101,10 @@ export function LocationDetailPanel({
     ? `https://www.google.com/maps/dir/?api=1&destination=${effectiveCoords.lat},${effectiveCoords.lng}`
     : null
 
+  const categoryName = location.category
+    ? getLocalizedCategoryName(location.category.name, locale)
+    : null
+
   return (
     <div
       data-testid="location-detail-panel"
@@ -101,7 +122,7 @@ export function LocationDetailPanel({
         className="mb-3 inline-flex items-center gap-1.5 self-start rounded-md px-1 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <ArrowLeft className="h-4 w-4" />
-        <span>Back to all locations</span>
+        <span>{t.backToAll}</span>
       </button>
 
       {/* Main details card */}
@@ -122,12 +143,21 @@ export function LocationDetailPanel({
                     iconName={location.category.icon}
                     className="h-3.5 w-3.5"
                   />
-                  <span>{location.category.name}</span>
+                  <span>{categoryName}</span>
                 </span>
               )}
               {location.floor != null && (
                 <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                  Floor {location.floor}
+                  {t.floorPrefix} {location.floor}
+                </span>
+              )}
+              {distanceMeters != null && (
+                <span
+                  data-testid="detail-distance-badge"
+                  className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+                >
+                  <Navigation className="h-3 w-3" />
+                  <span>{formatDistance(distanceMeters, locale)}</span>
                 </span>
               )}
             </div>
@@ -139,7 +169,7 @@ export function LocationDetailPanel({
         {parentLocation && (
           <div className="flex items-center gap-1.5 rounded-md border border-border/70 bg-muted/30 p-2 text-xs">
             <Layers className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="text-muted-foreground">Located inside:</span>
+            <span className="text-muted-foreground">{t.locatedInside}:</span>
             <button
               type="button"
               onClick={() => onSelectLocation(parentLocation)}
@@ -163,7 +193,7 @@ export function LocationDetailPanel({
             <Clock className="h-4 w-4 text-primary shrink-0" />
             <div>
               <span className="font-semibold text-foreground">
-                Hours:{" "}
+                {t.operatingHours}:{" "}
               </span>
               <span className="text-muted-foreground">
                 {location.opening_hours}
@@ -188,7 +218,7 @@ export function LocationDetailPanel({
               className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Directions</span>
+              <span>{t.directions}</span>
               <span className="sr-only">(opens in new tab)</span>
             </a>
           )}
@@ -198,7 +228,7 @@ export function LocationDetailPanel({
         {childLocations.length > 0 && (
           <div className="mt-1 flex flex-col gap-2">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Places Inside ({childLocations.length})
+              {t.placesInside} ({childLocations.length})
             </h3>
             <div className="flex flex-col gap-1.5">
               {childLocations.map((child) => (
@@ -215,7 +245,7 @@ export function LocationDetailPanel({
                     </span>
                     {child.floor != null && (
                       <span className="text-[11px] text-muted-foreground">
-                        Floor {child.floor}
+                        {t.floorPrefix} {child.floor}
                       </span>
                     )}
                   </div>

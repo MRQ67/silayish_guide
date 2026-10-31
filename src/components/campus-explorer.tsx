@@ -6,6 +6,7 @@ import {
   Layers,
   Map as MapIcon,
   MapPin,
+  Navigation,
   Search,
   Sparkles,
   SplitSquareVertical,
@@ -15,10 +16,14 @@ import {
 import type { Category, Location, Service } from "@/lib/types"
 import { normalizeCode, searchLocations } from "@/lib/search"
 import { getMapMarkers } from "@/lib/map-utils"
+import { getLocationDistanceMeters } from "@/lib/location-utils"
 import { LocationListItem } from "@/components/location-list-item"
 import { LocationDetailPanel } from "@/components/location-detail-panel"
 import { ServicesList } from "@/components/services-list"
 import { CategoryIcon } from "@/components/category-icon"
+import { useLanguage } from "@/components/language-provider"
+import { getLocalizedCategoryName, translations } from "@/lib/i18n"
+import type { Locale, TranslationDictionary } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 
 const CampusMap = dynamic(() => import("@/components/campus-map"), {
@@ -44,10 +49,23 @@ export function CampusExplorer({
   initialCategories = [],
   initialServices = [],
 }: CampusExplorerProps) {
+  let locale: Locale = "en"
+  let t: TranslationDictionary = translations.en
+
+  try {
+    const langCtx = useLanguage()
+    locale = langCtx.locale
+    t = langCtx.t
+  } catch {
+    // outside provider in unit tests
+  }
+
   const [activeTab, setActiveTab] = useState<"locations" | "services">("locations")
   const [mobileView, setMobileView] = useState<"split" | "map" | "list">("split")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
+  const [sortByNearest, setSortByNearest] = useState(false)
 
   // Initialize selectedLocation from URL ?location= parameter on initial render
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(() => {
@@ -130,6 +148,20 @@ export function CampusExplorer({
     return result
   }, [initialLocations, selectedCategoryId, searchQuery])
 
+  // Optionally sort filtered locations by distance to user when proximity sorting is active
+  const displayLocations = useMemo(() => {
+    if (!userLocation || !sortByNearest) {
+      return filteredLocations
+    }
+    return [...filteredLocations].sort((a, b) => {
+      const distA =
+        getLocationDistanceMeters(a, userLocation, initialLocations) ?? Infinity
+      const distB =
+        getLocationDistanceMeters(b, userLocation, initialLocations) ?? Infinity
+      return distA - distB
+    })
+  }, [filteredLocations, userLocation, sortByNearest, initialLocations])
+
   const mapItemCount = useMemo(() => {
     const outlinesCount = filteredLocations.filter((l) => Boolean(l.outline)).length
     const markersCount = getMapMarkers(filteredLocations, initialLocations).length
@@ -204,6 +236,7 @@ export function CampusExplorer({
           allLocations={initialLocations}
           selectedLocation={selectedLocation}
           onSelectLocation={handleSelectLocation}
+          onUserLocationChange={setUserLocation}
         />
       </section>
 
@@ -238,7 +271,7 @@ export function CampusExplorer({
               )}
             >
               <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Places ({initialLocations.length})</span>
+              <span>{t.placesTab} ({initialLocations.length})</span>
             </button>
             <button
               type="button"
@@ -259,7 +292,7 @@ export function CampusExplorer({
               )}
             >
               <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Services {initialServices.length > 0 && `(${initialServices.length})`}</span>
+              <span>{t.servicesTab} {initialServices.length > 0 && `(${initialServices.length})`}</span>
             </button>
           </div>
         </div>
@@ -292,157 +325,191 @@ export function CampusExplorer({
                 allLocations={initialLocations}
                 onBack={handleDeselectLocation}
                 onSelectLocation={handleSelectLocation}
+                distanceMeters={getLocationDistanceMeters(
+                  selectedLocation,
+                  userLocation,
+                  initialLocations
+                )}
               />
             ) : (
               /* Locations Tab: Search + Categories + List */
               <>
                 <div className="border-b border-border p-3 sm:p-4">
-              <div className="relative flex items-center">
-                <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, description, or code (e.g. B-002)..."
-                  className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    aria-label="Clear search"
-                    className="absolute right-2.5 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {/* Category Filter Chips */}
-              {categories.length > 0 && (
-                <div
-                  role="region"
-                  aria-label="Filter locations by category"
-                  className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
-                >
-                  <button
-                    type="button"
-                    data-testid="category-chip-all"
-                    onClick={() => setSelectedCategoryId(null)}
-                    aria-pressed={selectedCategoryId === null}
-                    className={cn(
-                      "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      selectedCategoryId === null
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  <div className="relative flex items-center">
+                    <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={t.searchPlaceholder}
+                      className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        aria-label={t.clearSearch}
+                        className="absolute right-2.5 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     )}
+                  </div>
+
+                  {/* Category Filter Chips & Proximity Toggle */}
+                  <div
+                    role="region"
+                    aria-label="Filter locations by category"
+                    className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
                   >
-                    <Layers className="h-3 w-3" />
-                    <span>All</span>
-                    <span
+                    <button
+                      type="button"
+                      data-testid="category-chip-all"
+                      onClick={() => setSelectedCategoryId(null)}
+                      aria-pressed={selectedCategoryId === null}
                       className={cn(
-                        "rounded-full px-1.5 py-0.2 text-[10px]",
+                        "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         selectedCategoryId === null
-                          ? "bg-primary-foreground/25 text-primary-foreground"
-                          : "bg-background/80 text-muted-foreground"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
                     >
-                      {initialLocations.length}
-                    </span>
-                  </button>
-
-                  {categories.map((cat) => {
-                    const isSelected = selectedCategoryId === cat.id
-                    const count = categoryCounts[cat.id] ?? 0
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        data-testid={`category-chip-${cat.id}`}
-                        onClick={() =>
-                          setSelectedCategoryId((prev) =>
-                            prev === cat.id ? null : cat.id
-                          )
-                        }
-                        aria-pressed={isSelected}
+                      <Layers className="h-3 w-3" />
+                      <span>{t.allCategories}</span>
+                      <span
                         className={cn(
-                          "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                          isSelected
-                            ? "bg-primary text-primary-foreground shadow-xs"
-                            : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          "rounded-full px-1.5 py-0.2 text-[10px]",
+                          selectedCategoryId === null
+                            ? "bg-primary-foreground/25 text-primary-foreground"
+                            : "bg-background/80 text-muted-foreground"
                         )}
                       >
-                        <CategoryIcon iconName={cat.icon} className="h-3 w-3" />
-                        <span>{cat.name}</span>
-                        <span
+                        {initialLocations.length}
+                      </span>
+                    </button>
+
+                    {/* Nearby Sort Chip (visible when user location is available) */}
+                    {userLocation && (
+                      <button
+                        type="button"
+                        data-testid="nearby-sort-toggle"
+                        onClick={() => setSortByNearest((prev) => !prev)}
+                        aria-pressed={sortByNearest}
+                        className={cn(
+                          "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          sortByNearest
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 hover:bg-blue-100"
+                        )}
+                      >
+                        <Navigation className="h-3 w-3" />
+                        <span>{t.nearby}</span>
+                      </button>
+                    )}
+
+                    {categories.map((cat) => {
+                      const isSelected = selectedCategoryId === cat.id
+                      const count = categoryCounts[cat.id] ?? 0
+                      const localizedName = getLocalizedCategoryName(
+                        cat.name,
+                        locale
+                      )
+
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          data-testid={`category-chip-${cat.id}`}
+                          onClick={() =>
+                            setSelectedCategoryId((prev) =>
+                              prev === cat.id ? null : cat.id
+                            )
+                          }
+                          aria-pressed={isSelected}
                           className={cn(
-                            "rounded-full px-1.5 py-0.2 text-[10px]",
+                            "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             isSelected
-                              ? "bg-primary-foreground/25 text-primary-foreground"
-                              : "bg-background/80 text-muted-foreground"
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                         >
-                          {count}
-                        </span>
+                          <CategoryIcon iconName={cat.icon} className="h-3 w-3" />
+                          <span>{localizedName}</span>
+                          <span
+                            className={cn(
+                              "rounded-full px-1.5 py-0.2 text-[10px]",
+                              isSelected
+                                ? "bg-primary-foreground/25 text-primary-foreground"
+                                : "bg-background/80 text-muted-foreground"
+                            )}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {filteredLocations.length === 1
+                        ? `1 ${t.locationCountSingular}`
+                        : `${filteredLocations.length} ${t.locationCountPlural}`}
+                    </span>
+                    {mapItemCount > 0 && (
+                      <span>
+                        {mapItemCount === 1 ? "1 on map" : `${mapItemCount} on map`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Locations List */}
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                  {displayLocations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                      <p className="font-semibold text-foreground">
+                        {t.noLocationsFound}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {selectedCategoryId
+                          ? t.noLocationsHint
+                          : `${t.noLocationsFound}. ${t.noLocationsHint}`}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleClearFilters}
+                        className="mt-3 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {t.clearFilters}
                       </button>
-                    )
-                  })}
-                </div>
-              )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2.5">
+                      {displayLocations.map((location) => {
+                        const distanceMeters = getLocationDistanceMeters(
+                          location,
+                          userLocation,
+                          initialLocations
+                        )
 
-              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {filteredLocations.length === 1
-                    ? "1 location found"
-                    : `${filteredLocations.length} locations found`}
-                </span>
-                {mapItemCount > 0 && (
-                  <span>
-                    {mapItemCount === 1 ? "1 on map" : `${mapItemCount} on map`}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Locations List */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-              {filteredLocations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                  <p className="font-semibold text-foreground">
-                    No locations found
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {selectedCategoryId
-                      ? "No campus location matched the selected category and search query."
-                      : `No campus location matched "${searchQuery}". Try searching for another building name or code like B-002.`}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleClearFilters}
-                    className="mt-3 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    Clear filters and search
-                  </button>
+                        return (
+                          <LocationListItem
+                            key={location.id}
+                            location={location}
+                            onClick={handleSelectLocation}
+                            distanceMeters={distanceMeters}
+                          />
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex flex-col gap-2.5">
-                  {filteredLocations.map((location) => {
-                    return (
-                      <LocationListItem
-                        key={location.id}
-                        location={location}
-                        onClick={handleSelectLocation}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </>
+              </>
+            )}
+          </div>
         )}
-      </div>
-    )}
-  </section>
+      </section>
 
       {/* Mobile Floating View Switcher (Map / Split / List) */}
       <div
@@ -463,7 +530,7 @@ export function CampusExplorer({
           )}
         >
           <MapIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Map</span>
+          <span>{t.viewMap}</span>
         </button>
         <button
           type="button"
@@ -478,7 +545,7 @@ export function CampusExplorer({
           )}
         >
           <SplitSquareVertical className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Split</span>
+          <span>{t.viewSplit}</span>
         </button>
         <button
           type="button"
@@ -493,7 +560,7 @@ export function CampusExplorer({
           )}
         >
           <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>List</span>
+          <span>{t.viewList}</span>
         </button>
       </div>
     </div>
