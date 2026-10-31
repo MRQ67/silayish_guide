@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react"
 import dynamic from "next/dynamic"
-import { Search, X } from "lucide-react"
+import { Layers, Search, X } from "lucide-react"
 
-import type { Location } from "@/lib/types"
+import type { Category, Location } from "@/lib/types"
 import { searchLocations } from "@/lib/search"
 import { getMapMarkers } from "@/lib/map-utils"
 import { LocationListItem } from "@/components/location-list-item"
+import { CategoryIcon } from "@/components/category-icon"
+import { cn } from "@/lib/utils"
 
 const CampusMap = dynamic(() => import("@/components/campus-map"), {
   ssr: false,
@@ -23,24 +25,71 @@ const CampusMap = dynamic(() => import("@/components/campus-map"), {
 
 export interface CampusExplorerProps {
   initialLocations: Location[]
+  initialCategories?: Category[]
 }
 
-export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
+export function CampusExplorer({
+  initialLocations,
+  initialCategories = [],
+}: CampusExplorerProps) {
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null
+  )
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   )
 
-  const filteredLocations = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return initialLocations
+  // Derive categories from initialCategories or unique locations
+  const categories = useMemo(() => {
+    if (initialCategories && initialCategories.length > 0) {
+      return initialCategories
     }
-    return searchLocations(initialLocations, searchQuery)
-  }, [initialLocations, searchQuery])
+    const map = new Map<string, Category>()
+    for (const loc of initialLocations) {
+      if (loc.category?.id && !map.has(loc.category.id)) {
+        map.set(loc.category.id, loc.category)
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [initialCategories, initialLocations])
+
+  // Compute location count per category
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const loc of initialLocations) {
+      const catId = loc.category_id || loc.category?.id
+      if (catId) {
+        counts[catId] = (counts[catId] || 0) + 1
+      }
+    }
+    return counts
+  }, [initialLocations])
+
+  // Filter locations by selected category and search query
+  const filteredLocations = useMemo(() => {
+    let result = initialLocations
+    if (selectedCategoryId) {
+      result = result.filter(
+        (l) =>
+          l.category_id === selectedCategoryId ||
+          l.category?.id === selectedCategoryId
+      )
+    }
+    if (searchQuery.trim()) {
+      result = searchLocations(result, searchQuery)
+    }
+    return result
+  }, [initialLocations, selectedCategoryId, searchQuery])
 
   const mapItemCount = useMemo(() => {
-    const outlinesCount = filteredLocations.filter((l) => Boolean(l.outline)).length
-    const markersCount = getMapMarkers(filteredLocations, initialLocations).length
+    const outlinesCount = filteredLocations.filter((l) =>
+      Boolean(l.outline)
+    ).length
+    const markersCount = getMapMarkers(
+      filteredLocations,
+      initialLocations
+    ).length
     return outlinesCount + markersCount
   }, [filteredLocations, initialLocations])
 
@@ -55,6 +104,11 @@ export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
 
   const handleSelectLocation = (location: Location) => {
     setSelectedLocation(location)
+  }
+
+  const handleClearFilters = () => {
+    setSearchQuery("")
+    setSelectedCategoryId(null)
   }
 
   return (
@@ -77,7 +131,7 @@ export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
         aria-label="Campus Locations"
         className="flex flex-1 flex-col overflow-hidden bg-background md:order-1 md:w-[380px] md:shrink-0 lg:w-[430px]"
       >
-        {/* Search Header */}
+        {/* Search & Category Filter Header */}
         <div className="border-b border-border p-3 sm:p-4">
           <div className="relative flex items-center">
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
@@ -99,6 +153,78 @@ export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
               </button>
             )}
           </div>
+
+          {/* Category Filter Chips Bar */}
+          {categories.length > 0 && (
+            <div
+              role="region"
+              aria-label="Filter locations by category"
+              className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
+            >
+              <button
+                type="button"
+                data-testid="category-chip-all"
+                onClick={() => setSelectedCategoryId(null)}
+                aria-pressed={selectedCategoryId === null}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  selectedCategoryId === null
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Layers className="h-3 w-3" />
+                <span>All</span>
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.2 text-[10px]",
+                    selectedCategoryId === null
+                      ? "bg-primary-foreground/25 text-primary-foreground"
+                      : "bg-background/80 text-muted-foreground"
+                  )}
+                >
+                  {initialLocations.length}
+                </span>
+              </button>
+
+              {categories.map((cat) => {
+                const isSelected = selectedCategoryId === cat.id
+                const count = categoryCounts[cat.id] ?? 0
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    data-testid={`category-chip-${cat.id}`}
+                    onClick={() =>
+                      setSelectedCategoryId((prev) =>
+                        prev === cat.id ? null : cat.id
+                      )
+                    }
+                    aria-pressed={isSelected}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      isSelected
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <CategoryIcon iconName={cat.icon} className="h-3 w-3" />
+                    <span>{cat.name}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.2 text-[10px]",
+                        isSelected
+                          ? "bg-primary-foreground/25 text-primary-foreground"
+                          : "bg-background/80 text-muted-foreground"
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
             <span>
@@ -122,15 +248,16 @@ export function CampusExplorer({ initialLocations }: CampusExplorerProps) {
                 No locations found
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                No campus location matched &ldquo;{searchQuery}&rdquo;. Try
-                searching for another building name or code like B-002.
+                {selectedCategoryId
+                  ? "No campus location matched the selected category and search query."
+                  : `No campus location matched "${searchQuery}". Try searching for another building name or code like B-002.`}
               </p>
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
+                onClick={handleClearFilters}
                 className="mt-3 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Clear search query
+                Clear filters and search
               </button>
             </div>
           ) : (

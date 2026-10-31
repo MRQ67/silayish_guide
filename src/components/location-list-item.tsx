@@ -1,5 +1,6 @@
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
+import { CategoryIcon } from "@/components/category-icon"
 import { cn } from "@/lib/utils"
 
 export interface LocationListItemProps {
@@ -26,9 +27,22 @@ export function LocationListItem({
           </p>
         )}
       </div>
-      <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
-        {location.type}
-      </span>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+          {location.type}
+        </span>
+        {location.category && (
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            <CategoryIcon
+              iconName={location.category.icon}
+              className="h-3 w-3"
+            />
+            <span className="max-w-[110px] truncate">
+              {location.category.name}
+            </span>
+          </span>
+        )}
+      </div>
     </>
   )
 
