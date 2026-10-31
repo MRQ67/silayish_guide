@@ -1,12 +1,17 @@
 "use client"
 
-import { Navigation } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
 import { CategoryIcon } from "@/components/category-icon"
 import { useLanguage } from "@/components/language-provider"
-import { formatDistance, getLocalizedCategoryName } from "@/lib/i18n"
+import {
+  formatDistance,
+  formatWalkingTime,
+  getLocalizedCategoryName,
+} from "@/lib/i18n"
 import type { Locale } from "@/lib/i18n"
+import { getCategoryBadgeClasses } from "@/lib/category-badge-utils"
 import { cn } from "@/lib/utils"
 
 export interface LocationListItemProps {
@@ -34,43 +39,58 @@ export function LocationListItem({
     ? getLocalizedCategoryName(location.category.name, locale)
     : null
 
+  const badgeColors = getCategoryBadgeClasses(location.category?.name)
+
   const content = (
-    <>
-      <div className="flex flex-col gap-1 text-left">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-foreground">{location.name}</span>
-          <CodeBadge code={location.code} />
-          {distanceMeters != null && (
-            <span
-              data-testid="location-distance-badge"
-              className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
-            >
-              <Navigation className="h-2.5 w-2.5" aria-hidden="true" />
-              <span>{formatDistance(distanceMeters, locale)}</span>
-            </span>
+    <div className="flex w-full items-center justify-between gap-3 text-left">
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Squircle category icon (Mockup style) */}
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-colors",
+            badgeColors.bg,
+            badgeColors.text
           )}
+        >
+          <CategoryIcon
+            iconName={location.category?.icon || "map-pin"}
+            className="h-5 w-5"
+          />
         </div>
-        {location.description && (
-          <p className="line-clamp-2 text-xs text-muted-foreground">
-            {location.description}
-          </p>
-        )}
+
+        {/* Text details */}
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-semibold text-foreground text-sm sm:text-base leading-snug truncate">
+              {location.name}
+            </span>
+            <CodeBadge code={location.code} />
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+            {categoryName && <span>{categoryName}</span>}
+            {categoryName && distanceMeters != null && (
+              <span className="text-muted-foreground/60">·</span>
+            )}
+            {distanceMeters != null && (
+              <span
+                data-testid="location-distance-badge"
+                className="inline-flex items-center gap-1 font-medium text-foreground/80"
+              >
+                <span>{formatWalkingTime(distanceMeters, locale)}</span>
+                <span className="text-muted-foreground">
+                  ({formatDistance(distanceMeters, locale)})
+                </span>
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
-          {location.type}
-        </span>
-        {location.category && (
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <CategoryIcon
-              iconName={location.category.icon}
-              className="h-3 w-3"
-            />
-            <span className="max-w-[110px] truncate">{categoryName}</span>
-          </span>
-        )}
-      </div>
-    </>
+
+      <ChevronRight
+        className="h-5 w-5 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5"
+        aria-hidden="true"
+      />
+    </div>
   )
 
   if (onClick) {
@@ -92,7 +112,7 @@ export function LocationListItem({
         onClick={() => onClick(location)}
         onKeyDown={handleKeyDown}
         className={cn(
-          "flex w-full cursor-pointer items-start justify-between gap-3 rounded-lg border bg-card p-3 font-sans text-card-foreground shadow-xs transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "group flex w-full cursor-pointer items-center justify-between rounded-2xl border border-border/70 bg-card p-3 font-sans text-card-foreground shadow-2xs transition-all hover:bg-muted/40 hover:border-border active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           className
         )}
       >
@@ -106,7 +126,7 @@ export function LocationListItem({
       id={`location-item-${location.id}`}
       data-testid="location-list-item"
       className={cn(
-        "flex items-start justify-between gap-3 rounded-lg border bg-card p-3 font-sans text-card-foreground shadow-xs transition-colors",
+        "flex w-full items-center justify-between rounded-2xl border border-border/70 bg-card p-3 font-sans text-card-foreground shadow-2xs transition-colors",
         className
       )}
     >

@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest"
 import {
   createCategoryPinIcon,
+  getCategoryBadgeClasses,
   getCategoryPinConfig,
 } from "./category-pin-utils"
 
@@ -48,5 +49,20 @@ describe("category-pin-utils", () => {
     const first = createCategoryPinIcon("Academics", false)
     const second = createCategoryPinIcon("Academics", false)
     expect(first).toBe(second)
+  })
+
+  it("provides tailored squircle badge color classes for categories", () => {
+    const acad = getCategoryBadgeClasses("Academics")
+    expect(acad.bg).toContain("blue")
+    expect(acad.text).toContain("blue")
+
+    const admin = getCategoryBadgeClasses("Administration")
+    expect(admin.bg).toContain("emerald")
+
+    const health = getCategoryBadgeClasses("Health Center")
+    expect(health.bg).toContain("rose")
+
+    const fallback = getCategoryBadgeClasses(null)
+    expect(fallback.bg).toContain("slate")
   })
 })

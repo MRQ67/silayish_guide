@@ -1,4 +1,10 @@
 import L from "leaflet"
+import {
+  getCategoryBadgeClasses,
+  type CategoryBadgeClasses,
+} from "./category-badge-utils"
+
+export { getCategoryBadgeClasses, type CategoryBadgeClasses }
 
 export interface CategoryPinConfig {
   color: string

@@ -8,19 +8,20 @@ import { CampusExplorer } from "@/components/campus-explorer"
 
 function ExplorerLoading() {
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col font-sans md:flex-row">
-      <div className="flex h-[320px] w-full items-center justify-center bg-muted/20 sm:h-[380px] md:order-2 md:h-full md:flex-1">
+    <div className="relative flex h-[calc(100dvh-3.5rem)] w-full flex-col font-sans md:flex-row overflow-hidden">
+      <div className="absolute inset-0 flex w-full h-full items-center justify-center bg-muted/20 md:relative md:order-2 md:flex-1">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <span>Loading campus map...</span>
         </div>
       </div>
-      <div className="flex flex-1 flex-col p-4 md:order-1 md:w-[380px] lg:w-[430px]">
-        <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+      <div className="fixed bottom-0 left-0 right-0 h-[50dvh] rounded-t-[28px] border-t border-border/80 bg-background/95 p-4 shadow-xl md:static md:h-full md:w-[400px] lg:w-[440px] md:rounded-none md:border-t-0 md:border-r">
+        <div className="mx-auto h-1.5 w-12 rounded-full bg-muted md:hidden mb-4" />
+        <div className="h-10 w-full animate-pulse rounded-full bg-muted" />
         <div className="mt-4 flex flex-col gap-3">
-          <div className="h-20 w-full animate-pulse rounded-lg bg-muted/60" />
-          <div className="h-20 w-full animate-pulse rounded-lg bg-muted/60" />
-          <div className="h-20 w-full animate-pulse rounded-lg bg-muted/60" />
+          <div className="h-24 w-full animate-pulse rounded-2xl bg-muted/60" />
+          <div className="h-16 w-full animate-pulse rounded-2xl bg-muted/60" />
+          <div className="h-16 w-full animate-pulse rounded-2xl bg-muted/60" />
         </div>
       </div>
     </div>

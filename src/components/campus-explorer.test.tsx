@@ -76,10 +76,10 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    expect(screen.getByTestId("category-chip-all")).toBeDefined()
-    expect(screen.getByTestId("category-chip-cat-acad")).toBeDefined()
-    expect(screen.getByTestId("category-chip-cat-admin")).toBeDefined()
-    expect(screen.getByTestId("category-chip-cat-health")).toBeDefined()
+    expect(screen.getAllByTestId("category-chip-all").length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId("category-chip-cat-acad").length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId("category-chip-cat-admin").length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId("category-chip-cat-health").length).toBeGreaterThan(0)
 
     expect(screen.getByText("Engineering Hall")).toBeDefined()
     expect(screen.getByText("Main Administration")).toBeDefined()
@@ -94,13 +94,13 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    const acadChip = screen.getByTestId("category-chip-cat-acad")
-    fireEvent.click(acadChip)
+    const acadChips = screen.getAllByTestId("category-chip-cat-acad")
+    fireEvent.click(acadChips[0])
 
     expect(screen.getByText("Engineering Hall")).toBeDefined()
     expect(screen.queryByText("Main Administration")).toBeNull()
     expect(screen.queryByText("Campus Clinic")).toBeNull()
-    expect(screen.getByText("1 location found")).toBeDefined()
+    expect(screen.getByText(/1 location found/i)).toBeDefined()
   })
 
   it("clicking the active category chip again toggles back to all locations", () => {
@@ -111,11 +111,11 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    const acadChip = screen.getByTestId("category-chip-cat-acad")
-    fireEvent.click(acadChip)
+    const acadChips = screen.getAllByTestId("category-chip-cat-acad")
+    fireEvent.click(acadChips[0])
     expect(screen.queryByText("Main Administration")).toBeNull()
 
-    fireEvent.click(acadChip)
+    fireEvent.click(acadChips[0])
     expect(screen.getByText("Engineering Hall")).toBeDefined()
     expect(screen.getByText("Main Administration")).toBeDefined()
     expect(screen.getByText("Campus Clinic")).toBeDefined()
@@ -129,18 +129,18 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    const adminChip = screen.getByTestId("category-chip-cat-admin")
-    fireEvent.click(adminChip)
+    const adminChips = screen.getAllByTestId("category-chip-cat-admin")
+    fireEvent.click(adminChips[0])
 
-    const searchInput = screen.getByPlaceholderText(/search/i)
-    fireEvent.change(searchInput, { target: { value: "President" } })
+    const searchInputs = screen.getAllByPlaceholderText(/search/i)
+    fireEvent.change(searchInputs[0], { target: { value: "President" } })
 
     expect(screen.getByText("Main Administration")).toBeDefined()
     expect(screen.queryByText("Engineering Hall")).toBeNull()
     expect(screen.queryByText("Campus Clinic")).toBeNull()
   })
 
-  it("auto-selects location and displays detail panel when URL contains ?location= parameter", () => {
+  it("auto-selects location and displays featured card when URL contains ?location= parameter", () => {
     window.history.replaceState({}, "", "/?location=B-002")
 
     render(
@@ -150,12 +150,12 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    expect(screen.getByTestId("location-detail-panel")).toBeDefined()
+    expect(screen.getByTestId("featured-location-card")).toBeDefined()
     expect(screen.getByText("Main Administration")).toBeDefined()
     expect(screen.getByText("President and Registrar offices")).toBeDefined()
   })
 
-  it("updates URL and shows detail panel when a location item is clicked", () => {
+  it("updates URL and shows featured card when a location item is clicked", () => {
     render(
       <CampusExplorer
         initialLocations={sampleLocations}
@@ -168,7 +168,7 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     fireEvent.click(button!)
 
     expect(window.location.search).toContain("location=B-001")
-    expect(screen.getByTestId("location-detail-panel")).toBeDefined()
+    expect(screen.getByTestId("featured-location-card")).toBeDefined()
   })
 
   it("switches to services tab when Services button is clicked", () => {
@@ -204,7 +204,7 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     expect(screen.getByText("No saved places yet")).toBeDefined()
   })
 
-  it("toggles mobile view mode between split, map, and list", () => {
+  it("adjusts bottom sheet snap height between peek, half, and full via drag handle", () => {
     render(
       <CampusExplorer
         initialLocations={sampleLocations}
@@ -212,21 +212,42 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    const mapBtn = screen.getByTestId("mobile-view-map")
-    const listBtn = screen.getByTestId("mobile-view-list")
-    const splitBtn = screen.getByTestId("mobile-view-split")
+    const handle = screen.getByTestId("bottom-sheet-handle")
+    const directory = screen.getByRole("region", { name: /Campus Directory/i })
 
-    fireEvent.click(mapBtn)
-    expect(mapBtn.getAttribute("aria-pressed")).toBe("true")
-    expect(mapBtn.className).toContain("bg-primary")
+    // Initial state is half (h-[50dvh])
+    expect(directory.className).toContain("h-[50dvh]")
 
-    fireEvent.click(listBtn)
-    expect(listBtn.getAttribute("aria-pressed")).toBe("true")
-    expect(listBtn.className).toContain("bg-primary")
+    // Click 1: half -> full (h-[90dvh])
+    fireEvent.click(handle)
+    expect(directory.className).toContain("h-[90dvh]")
 
-    fireEvent.click(splitBtn)
-    expect(splitBtn.getAttribute("aria-pressed")).toBe("true")
-    expect(splitBtn.className).toContain("bg-primary")
+    // Click 2: full -> peek (h-[76px])
+    fireEvent.click(handle)
+    expect(directory.className).toContain("h-[76px]")
+
+    // Click 3: peek -> half (h-[50dvh])
+    fireEvent.click(handle)
+    expect(directory.className).toContain("h-[50dvh]")
+  })
+
+  it("toggles distance sorting when filter sliders or closest button is clicked", () => {
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+      />
+    )
+
+    const slidersBtn = screen.getAllByTestId("filter-sliders-button")[0]
+    expect(slidersBtn.getAttribute("aria-label")).toBe("Sort by nearest")
+
+    fireEvent.click(slidersBtn)
+    expect(slidersBtn.getAttribute("aria-label")).toBe("Clear distance sort")
+
+    const closestBtn = screen.getByTestId("nearby-sort-toggle")
+    fireEvent.click(closestBtn)
+    expect(closestBtn.getAttribute("aria-pressed")).toBe("false")
   })
 
   it("localizes UI strings into Amharic when LanguageProvider is set to am", () => {
@@ -241,12 +262,12 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
 
     // Amharic search placeholder
     expect(
-      screen.getByPlaceholderText(/በስም፣ መግለጫ ወይም በህንፃ ኮድ ይፈልጉ/i)
-    ).toBeDefined()
+      screen.getAllByPlaceholderText(/በስም፣ መግለጫ ወይም በህንፃ ኮድ ይፈልጉ/i).length
+    ).toBeGreaterThan(0)
 
     // Amharic category chips
-    expect(screen.getByTestId("category-chip-all").textContent).toContain("ሁሉም")
-    expect(screen.getByTestId("category-chip-cat-acad").textContent).toContain("ትምህርት")
-    expect(screen.getByTestId("category-chip-cat-admin").textContent).toContain("አስተዳደር")
+    expect(screen.getAllByTestId("category-chip-all")[0].textContent).toContain("ሁሉም")
+    expect(screen.getAllByTestId("category-chip-cat-acad")[0].textContent).toContain("ትምህርት")
+    expect(screen.getAllByTestId("category-chip-cat-admin")[0].textContent).toContain("አስተዳደር")
   })
 })

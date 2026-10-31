@@ -149,8 +149,8 @@ export function LocateControl({
           }
           title="Locate me on campus"
           className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card shadow-md transition-all hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
-            userPosition ? "border-primary text-primary" : "text-foreground"
+            "flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-background/95 dark:bg-card/95 shadow-lg backdrop-blur-sm transition-all hover:bg-muted hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60",
+            userPosition ? "border-primary text-primary" : "text-blue-600 dark:text-blue-400"
           )}
         >
           {locating ? (
@@ -161,7 +161,7 @@ export function LocateControl({
           ) : (
             <Navigation
               className={cn(
-                "h-4 w-4 transition-transform",
+                "h-5 w-5 -rotate-45 transition-transform",
                 userPosition && "fill-primary"
               )}
               aria-hidden="true"

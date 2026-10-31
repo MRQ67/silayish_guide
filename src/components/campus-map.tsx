@@ -243,6 +243,7 @@ export interface CampusMapProps {
   onUserLocationChange?: (coords: [number, number]) => void
   onToggleRouting?: (active: boolean) => void
   className?: string
+  locateControlClassName?: string
 }
 
 export default function CampusMap({
@@ -255,6 +256,7 @@ export default function CampusMap({
   onSelectLocation,
   onUserLocationChange,
   className = "",
+  locateControlClassName,
 }: CampusMapProps) {
   useEffect(() => {
     fixLeafletDefaultIcon()
@@ -484,7 +486,10 @@ export default function CampusMap({
         })}
 
         {/* Floating Geolocation Control */}
-        <LocateControl onLocationFound={onUserLocationChange} />
+        <LocateControl
+          className={locateControlClassName}
+          onLocationFound={onUserLocationChange}
+        />
       </MapContainer>
     </div>
   )
