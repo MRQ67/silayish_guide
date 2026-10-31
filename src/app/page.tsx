@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { unstable_rethrow } from "next/navigation"
 import { connection } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import type { Category, Location } from "@/lib/types"
+import type { Category, Location, Service } from "@/lib/types"
 import { handleLocationError } from "@/lib/errors"
 import { CampusExplorer } from "@/components/campus-explorer"
 
@@ -31,11 +31,12 @@ async function LocationLoader() {
   await connection()
   let locations: Location[] = []
   let categories: Category[] = []
+  let services: Service[] = []
   let errorMessage: string | null = null
 
   try {
     const supabase = await createClient()
-    const [locationsRes, categoriesRes] = await Promise.all([
+    const [locationsRes, categoriesRes, servicesRes] = await Promise.all([
       supabase
         .from("locations")
         .select("*, category:categories(id, name, icon)")
@@ -43,6 +44,10 @@ async function LocationLoader() {
       supabase
         .from("categories")
         .select("id, name, icon")
+        .order("name", { ascending: true }),
+      supabase
+        .from("services")
+        .select("*, location:locations(id, name, code)")
         .order("name", { ascending: true }),
     ])
 
@@ -54,6 +59,10 @@ async function LocationLoader() {
 
     if (categoriesRes.data) {
       categories = (categoriesRes.data as Category[]) || []
+    }
+
+    if (servicesRes.data) {
+      services = (servicesRes.data as Service[]) || []
     }
   } catch (err) {
     unstable_rethrow(err)
@@ -93,6 +102,7 @@ async function LocationLoader() {
       <CampusExplorer
         initialLocations={locations}
         initialCategories={categories}
+        initialServices={services}
       />
     </main>
   )

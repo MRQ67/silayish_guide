@@ -58,6 +58,17 @@ export interface Location {
   updated_at?: string
 }
 
+export interface Service {
+  id: string
+  name: string
+  description?: string | null
+  location_id?: string | null
+  hours?: string | null
+  contact?: string | null
+  created_at?: string
+  location?: Location | null
+}
+
 export type FeedbackStatus = "open" | "reviewed" | "resolved"
 
 export interface FeedbackReport {
@@ -67,4 +78,3 @@ export interface FeedbackReport {
   status: FeedbackStatus
   created_at: string
 }
-

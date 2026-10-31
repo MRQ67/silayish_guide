@@ -2,12 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react"
 import dynamic from "next/dynamic"
-import { Layers, Search, X } from "lucide-react"
+import {
+  Layers,
+  Map as MapIcon,
+  MapPin,
+  Search,
+  Sparkles,
+  SplitSquareVertical,
+  X,
+} from "lucide-react"
 
-import type { Category, Location } from "@/lib/types"
+import type { Category, Location, Service } from "@/lib/types"
 import { normalizeCode, searchLocations } from "@/lib/search"
 import { getMapMarkers } from "@/lib/map-utils"
 import { LocationListItem } from "@/components/location-list-item"
+import { LocationDetailPanel } from "@/components/location-detail-panel"
+import { ServicesList } from "@/components/services-list"
 import { CategoryIcon } from "@/components/category-icon"
 import { cn } from "@/lib/utils"
 
@@ -26,35 +36,35 @@ const CampusMap = dynamic(() => import("@/components/campus-map"), {
 export interface CampusExplorerProps {
   initialLocations: Location[]
   initialCategories?: Category[]
+  initialServices?: Service[]
 }
 
 export function CampusExplorer({
   initialLocations,
   initialCategories = [],
+  initialServices = [],
 }: CampusExplorerProps) {
+  const [activeTab, setActiveTab] = useState<"locations" | "services">("locations")
+  const [mobileView, setMobileView] = useState<"split" | "map" | "list">("split")
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null
-  )
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
   // Initialize selectedLocation from URL ?location= parameter on initial render
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    () => {
-      if (typeof window === "undefined") return null
-      const params = new URLSearchParams(window.location.search)
-      const locationParam = params.get("location")
-      if (!locationParam) return null
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(() => {
+    if (typeof window === "undefined") return null
+    const params = new URLSearchParams(window.location.search)
+    const locationParam = params.get("location")
+    if (!locationParam) return null
 
-      const normalizedParam = normalizeCode(locationParam)
-      return (
-        initialLocations.find(
-          (loc) =>
-            (loc.code && normalizeCode(loc.code) === normalizedParam) ||
-            loc.id === locationParam
-        ) || null
-      )
-    }
-  )
+    const normalizedParam = normalizeCode(locationParam)
+    return (
+      initialLocations.find(
+        (loc) =>
+          (loc.code && normalizeCode(loc.code) === normalizedParam) ||
+          loc.id === locationParam
+      ) || null
+    )
+  })
 
   // Listen to browser Back/Forward navigation
   useEffect(() => {
@@ -121,13 +131,8 @@ export function CampusExplorer({
   }, [initialLocations, selectedCategoryId, searchQuery])
 
   const mapItemCount = useMemo(() => {
-    const outlinesCount = filteredLocations.filter((l) =>
-      Boolean(l.outline)
-    ).length
-    const markersCount = getMapMarkers(
-      filteredLocations,
-      initialLocations
-    ).length
+    const outlinesCount = filteredLocations.filter((l) => Boolean(l.outline)).length
+    const markersCount = getMapMarkers(filteredLocations, initialLocations).length
     return outlinesCount + markersCount
   }, [filteredLocations, initialLocations])
 
@@ -142,6 +147,7 @@ export function CampusExplorer({
 
   const handleSelectLocation = (location: Location) => {
     setSelectedLocation(location)
+    setActiveTab("locations")
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href)
       const param = location.code || location.id
@@ -150,9 +156,7 @@ export function CampusExplorer({
     }
   }
 
-  const handleClearFilters = () => {
-    setSearchQuery("")
-    setSelectedCategoryId(null)
+  const handleDeselectLocation = () => {
     setSelectedLocation(null)
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href)
@@ -161,12 +165,25 @@ export function CampusExplorer({
     }
   }
 
+  const handleClearFilters = () => {
+    setSearchQuery("")
+    setSelectedCategoryId(null)
+    handleDeselectLocation()
+  }
+
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] w-full flex-col font-sans md:flex-row">
-      {/* Map Section: On mobile fixed height at top; on desktop flex-1 on right */}
+    <div className="relative flex h-[calc(100dvh-3.5rem)] w-full flex-col font-sans md:flex-row overflow-hidden">
+      {/* Map Section */}
       <section
         aria-label="Campus Map"
-        className="relative h-[320px] w-full shrink-0 border-b border-border sm:h-[380px] md:order-2 md:h-full md:flex-1 md:border-b-0 md:border-l"
+        className={cn(
+          "relative w-full shrink-0 border-b border-border transition-all md:order-2 md:h-full md:flex-1 md:border-b-0 md:border-l",
+          mobileView === "map"
+            ? "h-full flex-1"
+            : mobileView === "list"
+              ? "hidden md:flex md:h-full"
+              : "h-[320px] sm:h-[380px]"
+        )}
       >
         <CampusMap
           locations={filteredLocations}
@@ -176,161 +193,260 @@ export function CampusExplorer({
         />
       </section>
 
-      {/* List and Search Sidebar: On mobile scrollable list below map; on desktop sidebar on left */}
+      {/* List / Details Sidebar */}
       <section
-        aria-label="Campus Locations"
-        className="flex flex-1 flex-col overflow-hidden bg-background md:order-1 md:w-[380px] md:shrink-0 lg:w-[430px]"
+        aria-label="Campus Directory"
+        className={cn(
+          "flex flex-1 flex-col overflow-hidden bg-background md:order-1 md:w-[380px] md:shrink-0 lg:w-[430px]",
+          mobileView === "map" ? "hidden md:flex" : "flex h-full"
+        )}
       >
-        {/* Search & Category Filter Header */}
-        <div className="border-b border-border p-3 sm:p-4">
-          <div className="relative flex items-center">
-            <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, description, or code (e.g. B-002)..."
-              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                aria-label="Clear search"
-                className="absolute right-2.5 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Category Filter Chips Bar */}
-          {categories.length > 0 && (
-            <div
-              role="region"
-              aria-label="Filter locations by category"
-              className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
+        {/* Navigation Tabs: Locations vs Campus Services */}
+        <div className="flex items-center border-b border-border bg-card/60 px-3 py-1.5 text-xs font-medium">
+          <div className="flex w-full items-center rounded-lg bg-muted/60 p-0.5">
+            <button
+              type="button"
+              data-testid="tab-locations"
+              onClick={() => setActiveTab("locations")}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                activeTab === "locations"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
             >
-              <button
-                type="button"
-                data-testid="category-chip-all"
-                onClick={() => setSelectedCategoryId(null)}
-                aria-pressed={selectedCategoryId === null}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  selectedCategoryId === null
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Layers className="h-3 w-3" />
-                <span>All</span>
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-0.2 text-[10px]",
-                    selectedCategoryId === null
-                      ? "bg-primary-foreground/25 text-primary-foreground"
-                      : "bg-background/80 text-muted-foreground"
-                  )}
-                >
-                  {initialLocations.length}
-                </span>
-              </button>
+              <MapPin className="h-3.5 w-3.5" />
+              <span>Places ({initialLocations.length})</span>
+            </button>
+            <button
+              type="button"
+              data-testid="tab-services"
+              onClick={() => {
+                setActiveTab("services")
+                handleDeselectLocation()
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                activeTab === "services"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Services {initialServices.length > 0 && `(${initialServices.length})`}</span>
+            </button>
+          </div>
+        </div>
 
-              {categories.map((cat) => {
-                const isSelected = selectedCategoryId === cat.id
-                const count = categoryCounts[cat.id] ?? 0
-                return (
+        {/* Tab Content: Services */}
+        {activeTab === "services" ? (
+          <ServicesList
+            services={initialServices}
+            allLocations={initialLocations}
+            onSelectLocation={handleSelectLocation}
+          />
+        ) : selectedLocation ? (
+          /* When a location is selected, display Rich Detail Panel */
+          <LocationDetailPanel
+            location={selectedLocation}
+            allLocations={initialLocations}
+            onBack={handleDeselectLocation}
+            onSelectLocation={handleSelectLocation}
+          />
+        ) : (
+          /* Locations Tab: Search + Categories + List */
+          <>
+            <div className="border-b border-border p-3 sm:p-4">
+              <div className="relative flex items-center">
+                <Search className="pointer-events-none absolute left-3 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name, description, or code (e.g. B-002)..."
+                  className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                {searchQuery && (
                   <button
-                    key={cat.id}
                     type="button"
-                    data-testid={`category-chip-${cat.id}`}
-                    onClick={() =>
-                      setSelectedCategoryId((prev) =>
-                        prev === cat.id ? null : cat.id
-                      )
-                    }
-                    aria-pressed={isSelected}
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                    className="absolute right-2.5 rounded p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Category Filter Chips */}
+              {categories.length > 0 && (
+                <div
+                  role="region"
+                  aria-label="Filter locations by category"
+                  className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
+                >
+                  <button
+                    type="button"
+                    data-testid="category-chip-all"
+                    onClick={() => setSelectedCategoryId(null)}
+                    aria-pressed={selectedCategoryId === null}
                     className={cn(
                       "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      isSelected
+                      selectedCategoryId === null
                         ? "bg-primary text-primary-foreground shadow-xs"
                         : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
-                    <CategoryIcon iconName={cat.icon} className="h-3 w-3" />
-                    <span>{cat.name}</span>
+                    <Layers className="h-3 w-3" />
+                    <span>All</span>
                     <span
                       className={cn(
                         "rounded-full px-1.5 py-0.2 text-[10px]",
-                        isSelected
+                        selectedCategoryId === null
                           ? "bg-primary-foreground/25 text-primary-foreground"
                           : "bg-background/80 text-muted-foreground"
                       )}
                     >
-                      {count}
+                      {initialLocations.length}
                     </span>
                   </button>
-                )
-              })}
-            </div>
-          )}
 
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {filteredLocations.length === 1
-                ? "1 location found"
-                : `${filteredLocations.length} locations found`}
-            </span>
-            {mapItemCount > 0 && (
-              <span>
-                {mapItemCount === 1 ? "1 on map" : `${mapItemCount} on map`}
-              </span>
-            )}
-          </div>
-        </div>
+                  {categories.map((cat) => {
+                    const isSelected = selectedCategoryId === cat.id
+                    const count = categoryCounts[cat.id] ?? 0
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        data-testid={`category-chip-${cat.id}`}
+                        onClick={() =>
+                          setSelectedCategoryId((prev) =>
+                            prev === cat.id ? null : cat.id
+                          )
+                        }
+                        aria-pressed={isSelected}
+                        className={cn(
+                          "flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          isSelected
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        <CategoryIcon iconName={cat.icon} className="h-3 w-3" />
+                        <span>{cat.name}</span>
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.2 text-[10px]",
+                            isSelected
+                              ? "bg-primary-foreground/25 text-primary-foreground"
+                              : "bg-background/80 text-muted-foreground"
+                          )}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
-        {/* Locations List */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4">
-          {filteredLocations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-              <p className="font-semibold text-foreground">
-                No locations found
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {selectedCategoryId
-                  ? "No campus location matched the selected category and search query."
-                  : `No campus location matched "${searchQuery}". Try searching for another building name or code like B-002.`}
-              </p>
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className="mt-3 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                Clear filters and search
-              </button>
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {filteredLocations.length === 1
+                    ? "1 location found"
+                    : `${filteredLocations.length} locations found`}
+                </span>
+                {mapItemCount > 0 && (
+                  <span>
+                    {mapItemCount === 1 ? "1 on map" : `${mapItemCount} on map`}
+                  </span>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {filteredLocations.map((location) => {
-                const isSelected = selectedLocation?.id === location.id
-                return (
-                  <LocationListItem
-                    key={location.id}
-                    location={location}
-                    onClick={handleSelectLocation}
-                    className={
-                      isSelected
-                        ? "border-primary/60 bg-muted/40 ring-1 ring-primary/40"
-                        : ""
-                    }
-                  />
-                )
-              })}
+
+            {/* Locations List */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+              {filteredLocations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                  <p className="font-semibold text-foreground">
+                    No locations found
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {selectedCategoryId
+                      ? "No campus location matched the selected category and search query."
+                      : `No campus location matched "${searchQuery}". Try searching for another building name or code like B-002.`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="mt-3 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    Clear filters and search
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {filteredLocations.map((location) => {
+                    return (
+                      <LocationListItem
+                        key={location.id}
+                        location={location}
+                        onClick={handleSelectLocation}
+                      />
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </section>
+
+      {/* Mobile Floating View Switcher (Map / Split / List) */}
+      <div className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[500] flex items-center rounded-full border border-border bg-card/95 px-1 py-0.5 shadow-lg backdrop-blur">
+        <button
+          type="button"
+          onClick={() => setMobileView("map")}
+          data-testid="mobile-view-map"
+          className={cn(
+            "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
+            mobileView === "map"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <MapIcon className="h-3.5 w-3.5" />
+          <span>Map</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView("split")}
+          data-testid="mobile-view-split"
+          className={cn(
+            "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
+            mobileView === "split"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <SplitSquareVertical className="h-3.5 w-3.5" />
+          <span>Split</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView("list")}
+          data-testid="mobile-view-list"
+          className={cn(
+            "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all",
+            mobileView === "list"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <MapPin className="h-3.5 w-3.5" />
+          <span>List</span>
+        </button>
+      </div>
     </div>
   )
 }

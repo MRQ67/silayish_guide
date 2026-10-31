@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { CampusExplorer } from "./campus-explorer"
-import type { Category, Location } from "@/lib/types"
+import type { Category, Location, Service } from "@/lib/types"
 
 vi.mock("next/dynamic", () => ({
   default: () => {
@@ -49,6 +49,15 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     },
   ]
 
+  const sampleServices: Service[] = [
+    {
+      id: "srv-1",
+      name: "Registrar Office",
+      description: "Student records and ID",
+      location_id: "loc-2",
+    },
+  ]
+
   beforeEach(() => {
     window.history.replaceState({}, "", "/")
   })
@@ -66,7 +75,6 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     expect(screen.getByTestId("category-chip-cat-admin")).toBeDefined()
     expect(screen.getByTestId("category-chip-cat-health")).toBeDefined()
 
-    // 3 locations initially displayed
     expect(screen.getByText("Engineering Hall")).toBeDefined()
     expect(screen.getByText("Main Administration")).toBeDefined()
     expect(screen.getByText("Campus Clinic")).toBeDefined()
@@ -83,7 +91,6 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     const acadChip = screen.getByTestId("category-chip-cat-acad")
     fireEvent.click(acadChip)
 
-    // Engineering Hall matches, other 2 should not be in document
     expect(screen.getByText("Engineering Hall")).toBeDefined()
     expect(screen.queryByText("Main Administration")).toBeNull()
     expect(screen.queryByText("Campus Clinic")).toBeNull()
@@ -126,13 +133,12 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
 
     expect(screen.getByText("Engineering Hall")).toBeDefined()
 
-    // Now search for something not in Academics
     fireEvent.change(searchInput, { target: { value: "Clinic" } })
     expect(screen.queryByText("Engineering Hall")).toBeNull()
     expect(screen.getByText("No locations found")).toBeDefined()
   })
 
-  it("auto-selects location when URL contains ?location= parameter on mount", () => {
+  it("auto-selects location and displays detail panel when URL contains ?location= parameter", () => {
     window.history.replaceState({}, "", "/?location=b-002")
 
     render(
@@ -142,11 +148,17 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
       />
     )
 
-    const adminItem = screen.getByText("Main Administration").closest("[data-testid='location-list-item']")
-    expect(adminItem?.className).toContain("border-primary/60")
+    expect(screen.getByTestId("location-detail-panel")).toBeDefined()
+    expect(screen.getByText("President and Registrar offices")).toBeDefined()
+
+    // Clicking back returns to list
+    const backBtn = screen.getByTestId("detail-back-button")
+    fireEvent.click(backBtn)
+    expect(screen.queryByTestId("location-detail-panel")).toBeNull()
+    expect(screen.getByText("Engineering Hall")).toBeDefined()
   })
 
-  it("updates URL with location code when a location item is clicked", () => {
+  it("updates URL and shows detail panel when a location item is clicked", () => {
     render(
       <CampusExplorer
         initialLocations={sampleLocations}
@@ -159,5 +171,44 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     fireEvent.click(button!)
 
     expect(window.location.search).toContain("location=B-001")
+    expect(screen.getByTestId("location-detail-panel")).toBeDefined()
+  })
+
+  it("switches to services tab when Services button is clicked", () => {
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+        initialServices={sampleServices}
+      />
+    )
+
+    const servicesTab = screen.getByTestId("tab-services")
+    fireEvent.click(servicesTab)
+
+    expect(screen.getByTestId("services-list")).toBeDefined()
+    expect(screen.getByText("Registrar Office")).toBeDefined()
+  })
+
+  it("toggles mobile view mode between split, map, and list", () => {
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+      />
+    )
+
+    const mapBtn = screen.getByTestId("mobile-view-map")
+    const listBtn = screen.getByTestId("mobile-view-list")
+    const splitBtn = screen.getByTestId("mobile-view-split")
+
+    fireEvent.click(mapBtn)
+    expect(mapBtn.className).toContain("bg-primary")
+
+    fireEvent.click(listBtn)
+    expect(listBtn.className).toContain("bg-primary")
+
+    fireEvent.click(splitBtn)
+    expect(splitBtn.className).toContain("bg-primary")
   })
 })
