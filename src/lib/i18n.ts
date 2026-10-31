@@ -32,13 +32,24 @@ export interface TranslationDictionary {
   closedNow: string
   servicesEmptyTitle: string
   servicesEmptyDesc: string
+  savedTab: string
+  bookmarkPlace: string
+  unbookmarkPlace: string
+  savedEmptyTitle: string
+  savedEmptyDesc: string
+  getDirections: string
+  openInGoogleMaps: string
+  closest: string
+  placesNearby: string
+  youAreHere: string
+  stopDirections: string
 }
 
 export const translations: Record<Locale, TranslationDictionary> = {
   en: {
     appName: "DDU Campus Guide",
     subTitle: "Dire Dawa University",
-    searchPlaceholder: "Search by name, description, or code (e.g. B-002)...",
+    searchPlaceholder: "Search places or code, like B-047...",
     clearSearch: "Clear search",
     allCategories: "All",
     placesTab: "Places",
@@ -67,11 +78,22 @@ export const translations: Record<Locale, TranslationDictionary> = {
     closedNow: "Closed",
     servicesEmptyTitle: "No campus services listed",
     servicesEmptyDesc: "Administrative and student services will appear here.",
+    savedTab: "Saved",
+    bookmarkPlace: "Save place",
+    unbookmarkPlace: "Remove saved place",
+    savedEmptyTitle: "No saved places yet",
+    savedEmptyDesc: "Tap the bookmark icon on any location to save it for quick access.",
+    getDirections: "Directions",
+    openInGoogleMaps: "Open in Google Maps",
+    closest: "Closest",
+    placesNearby: "places nearby",
+    youAreHere: "You are here",
+    stopDirections: "Clear route",
   },
   am: {
     appName: "ድሬዳዋ ዩኒቨርሲቲ ካምፓስ መመሪያ",
     subTitle: "ድሬዳዋ ዩኒቨርሲቲ",
-    searchPlaceholder: "በስም፣ መግለጫ ወይም በህንፃ ኮድ ይፈልጉ (ለምሳሌ B-002)...",
+    searchPlaceholder: "በስም፣ መግለጫ ወይም በህንፃ ኮድ ይፈልጉ (ለምሳሌ B-047)...",
     clearSearch: "ፍለጋ አጽዳ",
     allCategories: "ሁሉም",
     placesTab: "ቦታዎች",
@@ -100,6 +122,17 @@ export const translations: Record<Locale, TranslationDictionary> = {
     closedNow: "ዝግ ነው",
     servicesEmptyTitle: "ምንም የተመዘገበ አገልግሎት የለም",
     servicesEmptyDesc: "የአስተዳደር እና የተማሪዎች አገልግሎቶች እዚህ ይታያሉ።",
+    savedTab: "የተቀመጡ",
+    bookmarkPlace: "ቦታ አስቀምጥ",
+    unbookmarkPlace: "ከተቀመጡ አስወግድ",
+    savedEmptyTitle: "ምንም የተቀመጠ ቦታ የለም",
+    savedEmptyDesc: "በማንኛውም ቦታ ላይ የዕልባት ምልክቱን በመንካት በቀላሉ ለማግኘት ያስቀምጡ።",
+    getDirections: "አቅጣጫ አሳይ",
+    openInGoogleMaps: "በጉግል ካርታ ክፈት",
+    closest: "በቅርበት",
+    placesNearby: "አቅራቢያ ያሉ ቦታዎች",
+    youAreHere: "አሁን ያሉበት ቦታ",
+    stopDirections: "መንገድ አጥፋ",
   },
 }
 
@@ -153,4 +186,38 @@ export function formatDistance(meters: number, locale: Locale = "en"): string {
   }
   const km = (meters / 1000).toFixed(1)
   return locale === "am" ? `~${km} ኪ.ሜ ርቀት` : `~${km} km away`
+}
+
+/**
+ * Estimate walking duration in minutes from distance in meters (~80m/min or 4.8 km/h)
+ */
+export function getWalkingMinutes(meters: number): number {
+  if (meters <= 0) return 1
+  return Math.max(1, Math.round(meters / 80))
+}
+
+/**
+ * Format walking duration to localized string (e.g. "4 min walk" or "4 ደቂቃ እርምጃ")
+ */
+export function formatWalkingTime(meters: number, locale: Locale = "en"): string {
+  const minutes = getWalkingMinutes(meters)
+  return locale === "am" ? `${minutes} ደቂቃ እርምጃ` : `${minutes} min walk`
+}
+
+/**
+ * Format combined proximity and walking ETA (e.g. "4 min · 320 m" or "4 ደቂቃ · 320 ሜትር")
+ */
+export function formatProximityWithWalking(
+  meters: number,
+  locale: Locale = "en"
+): string {
+  const minutes = getWalkingMinutes(meters)
+  if (locale === "am") {
+    const distAm =
+      meters < 1000 ? `${Math.round(meters)} ሜትር` : `${(meters / 1000).toFixed(1)} ኪ.ሜ`
+    return `${minutes} ደቂቃ · ${distAm}`
+  }
+  const distEn =
+    meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`
+  return `${minutes} min · ${distEn}`
 }

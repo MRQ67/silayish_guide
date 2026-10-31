@@ -1,7 +1,15 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { ArrowLeft, Clock, ExternalLink, Layers, Navigation } from "lucide-react"
+import {
+  ArrowLeft,
+  Bookmark,
+  Clock,
+  CornerUpRight,
+  ExternalLink,
+  Layers,
+  Navigation,
+} from "lucide-react"
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
 import { CategoryIcon } from "@/components/category-icon"
@@ -9,7 +17,11 @@ import { ShareLocationButton } from "@/components/share-location-button"
 import { ReportProblemDialog } from "@/components/report-problem-dialog"
 import { calculateOutlineCenter } from "@/lib/validations/outline"
 import { useLanguage } from "@/components/language-provider"
-import { formatDistance, getLocalizedCategoryName } from "@/lib/i18n"
+import {
+  formatDistance,
+  formatWalkingTime,
+  getLocalizedCategoryName,
+} from "@/lib/i18n"
 import type { Locale, TranslationDictionary } from "@/lib/i18n"
 import { translations } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
@@ -20,6 +32,10 @@ export interface LocationDetailPanelProps {
   onBack: () => void
   onSelectLocation: (location: Location) => void
   distanceMeters?: number | null
+  onStartDirections?: () => void
+  isRoutingActive?: boolean
+  isBookmarked?: boolean
+  onToggleBookmark?: (locationId: string) => void
   className?: string
 }
 
@@ -58,6 +74,10 @@ export function LocationDetailPanel({
   onBack,
   onSelectLocation,
   distanceMeters,
+  onStartDirections,
+  isRoutingActive = false,
+  isBookmarked = false,
+  onToggleBookmark,
   className = "",
 }: LocationDetailPanelProps) {
   let locale: Locale = "en"
@@ -158,6 +178,9 @@ export function LocationDetailPanel({
                 >
                   <Navigation className="h-3 w-3" aria-hidden="true" />
                   <span>{formatDistance(distanceMeters, locale)}</span>
+                  <span className="text-muted-foreground font-normal">
+                    ({formatWalkingTime(distanceMeters, locale)})
+                  </span>
                 </span>
               )}
             </div>
@@ -202,26 +225,72 @@ export function LocationDetailPanel({
           </div>
         )}
 
-        {/* Action Buttons Row */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-b border-border py-2">
-          <ShareLocationButton location={location} />
-          <ReportProblemDialog
-            locationId={location.id}
-            locationName={location.name}
-          />
-          {googleMapsDirectionsUrl && (
-            <a
-              href={googleMapsDirectionsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Directions to ${location.name} on Google Maps (opens in new tab)`}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>{t.directions}</span>
-              <span className="sr-only">(opens in new tab)</span>
-            </a>
-          )}
+        {/* Action Buttons Row (Mockup Style: Primary Directions + Bookmark + Share) */}
+        <div className="flex flex-col gap-2 rounded-xl border border-border bg-card/60 p-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            {onStartDirections && (
+              <button
+                type="button"
+                onClick={onStartDirections}
+                data-testid="start-directions-button"
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 px-4 text-xs font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isRoutingActive
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-foreground text-background hover:bg-foreground/90"
+                )}
+              >
+                <CornerUpRight className="h-4 w-4" />
+                <span>
+                  {isRoutingActive ? t.stopDirections : t.getDirections}
+                </span>
+              </button>
+            )}
+
+            {onToggleBookmark && (
+              <button
+                type="button"
+                onClick={() => onToggleBookmark(location.id)}
+                data-testid="bookmark-location-button"
+                aria-label={
+                  isBookmarked ? t.unbookmarkPlace : t.bookmarkPlace
+                }
+                title={isBookmarked ? t.unbookmarkPlace : t.bookmarkPlace}
+                className={cn(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  isBookmarked
+                    ? "border-amber-400 bg-amber-500/10 text-amber-500"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Bookmark
+                  className={cn("h-4 w-4", isBookmarked && "fill-current")}
+                />
+              </button>
+            )}
+
+            <ShareLocationButton location={location} />
+          </div>
+
+          <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-2 text-xs">
+            <ReportProblemDialog
+              locationId={location.id}
+              locationName={location.name}
+            />
+            {googleMapsDirectionsUrl && (
+              <a
+                href={googleMapsDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Directions to ${location.name} on Google Maps (opens in new tab)`}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                <span>{t.directions}</span>
+                <span className="sr-only">(opens in new tab)</span>
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Child facilities inside this building */}

@@ -159,4 +159,40 @@ describe("LocationDetailPanel", () => {
     const badge = screen.getByTestId("detail-distance-badge")
     expect(badge.textContent).toContain("~240 m away")
   })
+
+  it("triggers onStartDirections when directions button is clicked", () => {
+    const handleDirections = vi.fn()
+    render(
+      <LocationDetailPanel
+        location={parentLocation}
+        allLocations={allLocations}
+        onBack={vi.fn()}
+        onSelectLocation={vi.fn()}
+        onStartDirections={handleDirections}
+      />
+    )
+
+    const dirBtn = screen.getByTestId("start-directions-button")
+    fireEvent.click(dirBtn)
+    expect(handleDirections).toHaveBeenCalledTimes(1)
+  })
+
+  it("triggers onToggleBookmark when bookmark button is clicked", () => {
+    const handleBookmark = vi.fn()
+    render(
+      <LocationDetailPanel
+        location={parentLocation}
+        allLocations={allLocations}
+        onBack={vi.fn()}
+        onSelectLocation={vi.fn()}
+        onToggleBookmark={handleBookmark}
+        isBookmarked={false}
+      />
+    )
+
+    const bmBtn = screen.getByTestId("bookmark-location-button")
+    fireEvent.click(bmBtn)
+    expect(handleBookmark).toHaveBeenCalledTimes(1)
+    expect(handleBookmark).toHaveBeenCalledWith(parentLocation.id)
+  })
 })
