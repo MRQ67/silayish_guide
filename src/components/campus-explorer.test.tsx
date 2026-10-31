@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { CampusExplorer } from "./campus-explorer"
 import type { Category, Location } from "@/lib/types"
@@ -12,7 +12,7 @@ vi.mock("next/dynamic", () => ({
   },
 }))
 
-describe("CampusExplorer Category Filtering", () => {
+describe("CampusExplorer Category Filtering and Deep Linking", () => {
   const sampleCategories: Category[] = [
     { id: "cat-acad", name: "Academics", icon: "graduation-cap" },
     { id: "cat-admin", name: "Administration", icon: "building-2" },
@@ -48,6 +48,10 @@ describe("CampusExplorer Category Filtering", () => {
       description: "Outpatient medical services",
     },
   ]
+
+  beforeEach(() => {
+    window.history.replaceState({}, "", "/")
+  })
 
   it("renders all category filter chips with location counts", () => {
     render(
@@ -126,5 +130,34 @@ describe("CampusExplorer Category Filtering", () => {
     fireEvent.change(searchInput, { target: { value: "Clinic" } })
     expect(screen.queryByText("Engineering Hall")).toBeNull()
     expect(screen.getByText("No locations found")).toBeDefined()
+  })
+
+  it("auto-selects location when URL contains ?location= parameter on mount", () => {
+    window.history.replaceState({}, "", "/?location=b-002")
+
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+      />
+    )
+
+    const adminItem = screen.getByText("Main Administration").closest("[data-testid='location-list-item']")
+    expect(adminItem?.className).toContain("border-primary/60")
+  })
+
+  it("updates URL with location code when a location item is clicked", () => {
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+      />
+    )
+
+    const button = screen.getByText("Engineering Hall").closest("[role='button']")
+    expect(button).not.toBeNull()
+    fireEvent.click(button!)
+
+    expect(window.location.search).toContain("location=B-001")
   })
 })

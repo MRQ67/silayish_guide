@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { Layers, Search, X } from "lucide-react"
 
 import type { Category, Location } from "@/lib/types"
-import { searchLocations } from "@/lib/search"
+import { normalizeCode, searchLocations } from "@/lib/search"
 import { getMapMarkers } from "@/lib/map-utils"
 import { LocationListItem } from "@/components/location-list-item"
 import { CategoryIcon } from "@/components/category-icon"
@@ -39,6 +39,25 @@ export function CampusExplorer({
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   )
+
+  // On mount: inspect URL search params for deep-linked ?location=
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const params = new URLSearchParams(window.location.search)
+    const locationParam = params.get("location")
+    if (!locationParam) return
+
+    const normalizedParam = normalizeCode(locationParam)
+    const match = initialLocations.find(
+      (loc) =>
+        (loc.code && normalizeCode(loc.code) === normalizedParam) ||
+        loc.id === locationParam
+    )
+
+    if (match) {
+      setSelectedLocation(match)
+    }
+  }, [initialLocations])
 
   // Derive categories from initialCategories or unique locations
   const categories = useMemo(() => {
@@ -97,18 +116,30 @@ export function CampusExplorer({
   useEffect(() => {
     if (!selectedLocation) return
     const el = document.getElementById(`location-item-${selectedLocation.id}`)
-    if (el) {
+    if (el && typeof el.scrollIntoView === "function") {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" })
     }
   }, [selectedLocation])
 
   const handleSelectLocation = (location: Location) => {
     setSelectedLocation(location)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      const param = location.code || location.id
+      url.searchParams.set("location", param)
+      window.history.replaceState({}, "", url.toString())
+    }
   }
 
   const handleClearFilters = () => {
     setSearchQuery("")
     setSelectedCategoryId(null)
+    setSelectedLocation(null)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("location")
+      window.history.replaceState({}, "", url.toString())
+    }
   }
 
   return (

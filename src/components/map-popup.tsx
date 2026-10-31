@@ -1,6 +1,7 @@
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
 import { ReportProblemDialog } from "@/components/report-problem-dialog"
+import { ShareLocationButton } from "@/components/share-location-button"
 
 export interface MapPopupProps {
   location: Location
@@ -28,7 +29,8 @@ export function MapPopup({ location, className = "" }: MapPopupProps) {
           {location.opening_hours}
         </div>
       )}
-      <div className="pt-1 border-t border-border/60">
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60">
+        <ShareLocationButton location={location} />
         <ReportProblemDialog
           locationId={location.id}
           locationName={location.name}
@@ -37,4 +39,3 @@ export function MapPopup({ location, className = "" }: MapPopupProps) {
     </div>
   )
 }
-
