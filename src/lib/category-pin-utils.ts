@@ -68,14 +68,23 @@ export function getCategoryPinConfig(
   }
 }
 
+// Icon cache keyed by `${color}_${isSelected ? "selected" : "normal"}` to prevent DOM thrashing in Leaflet
+const iconCache = new Map<string, L.DivIcon>()
+
 /**
- * Creates a Leaflet divIcon representing a modern category-colored pin marker
+ * Creates a Leaflet divIcon representing a modern category-colored pin marker (cached for performance)
  */
 export function createCategoryPinIcon(
   categoryName?: string | null,
   isSelected = false
 ): L.DivIcon {
   const config = getCategoryPinConfig(categoryName)
+  const cacheKey = `${config.color}_${isSelected ? "selected" : "normal"}`
+  const cached = iconCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   const size = isSelected ? 36 : 30
   const totalHeight = isSelected ? 44 : 38
   const halfSize = Math.round(size / 2)
@@ -96,11 +105,14 @@ export function createCategoryPinIcon(
     </div>
   `
 
-  return L.divIcon({
+  const icon = L.divIcon({
     className: "category-marker-pin !bg-transparent !border-0",
     html,
     iconSize: [size, totalHeight],
     iconAnchor: [halfSize, totalHeight],
     popupAnchor: [0, -totalHeight + 4],
   })
+
+  iconCache.set(cacheKey, icon)
+  return icon
 }

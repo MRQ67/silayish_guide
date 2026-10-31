@@ -20,6 +20,7 @@ describe("i18n", () => {
     expect(getLocalizedCategoryName("Academics", "am")).toBe("ትምህርት")
     expect(getLocalizedCategoryName("Administration", "am")).toBe("አስተዳደር")
     expect(getLocalizedCategoryName("Unknown Category", "am")).toBe("Unknown Category")
+    expect(getLocalizedCategoryName("toString", "en")).toBe("toString")
     expect(getLocalizedCategoryName(null, "am")).toBe("")
     expect(getLocalizedCategoryName(undefined, "am")).toBe("")
   })

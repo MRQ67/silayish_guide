@@ -43,4 +43,10 @@ describe("category-pin-utils", () => {
     const selectedPin = createCategoryPinIcon("Academics", true)
     expect(selectedPin.options.iconSize).toEqual([36, 44])
   })
+
+  it("caches divIcon instances to prevent unnecessary Leaflet DOM recreation", () => {
+    const first = createCategoryPinIcon("Academics", false)
+    const second = createCategoryPinIcon("Academics", false)
+    expect(first).toBe(second)
+  })
 })

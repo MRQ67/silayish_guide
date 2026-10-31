@@ -27,8 +27,21 @@ function getStoredBookmarksServerSnapshot(): string {
 
 function subscribe(listener: () => void) {
   listeners.push(listener)
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) {
+      listener()
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", handleStorage)
+  }
+
   return () => {
     listeners = listeners.filter((l) => l !== listener)
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", handleStorage)
+    }
   }
 }
 
@@ -59,9 +72,9 @@ export function useBookmarks() {
   const toggleBookmark = useCallback((id: string) => {
     if (typeof window === "undefined") return
     try {
-      const current = JSON.parse(
-        window.localStorage.getItem(STORAGE_KEY) || "[]"
-      ) as string[]
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      const parsed = raw ? JSON.parse(raw) : []
+      const current = Array.isArray(parsed) ? (parsed as string[]) : []
       const next = current.includes(id)
         ? current.filter((item) => item !== id)
         : [...current, id]

@@ -173,7 +173,10 @@ export function getLocalizedCategoryName(
   if (!categoryName || typeof categoryName !== "string") return ""
   if (locale === "en") return categoryName
   const lower = categoryName.toLowerCase().trim()
-  return categoryTranslations[lower]?.[locale] || categoryName
+  if (Object.prototype.hasOwnProperty.call(categoryTranslations, lower)) {
+    return categoryTranslations[lower][locale] || categoryName
+  }
+  return categoryName
 }
 
 /**

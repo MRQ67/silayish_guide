@@ -139,7 +139,7 @@ describe("LocationDetailPanel", () => {
       />
     )
 
-    const directionsLink = screen.getByRole("link", { name: /directions/i })
+    const directionsLink = screen.getByRole("link", { name: /google maps/i })
     expect(directionsLink.getAttribute("href")).toContain(
       `destination=${parentLocation.lat},${parentLocation.lng}`
     )
@@ -160,7 +160,7 @@ describe("LocationDetailPanel", () => {
     expect(badge.textContent).toContain("~240 m away")
   })
 
-  it("triggers onStartDirections when directions button is clicked", () => {
+  it("triggers onStartDirections when directions button is clicked and has aria-pressed", () => {
     const handleDirections = vi.fn()
     render(
       <LocationDetailPanel
@@ -169,15 +169,17 @@ describe("LocationDetailPanel", () => {
         onBack={vi.fn()}
         onSelectLocation={vi.fn()}
         onStartDirections={handleDirections}
+        isRoutingActive={true}
       />
     )
 
     const dirBtn = screen.getByTestId("start-directions-button")
+    expect(dirBtn.getAttribute("aria-pressed")).toBe("true")
     fireEvent.click(dirBtn)
     expect(handleDirections).toHaveBeenCalledTimes(1)
   })
 
-  it("triggers onToggleBookmark when bookmark button is clicked", () => {
+  it("triggers onToggleBookmark when bookmark button is clicked and has aria-pressed", () => {
     const handleBookmark = vi.fn()
     render(
       <LocationDetailPanel
@@ -186,11 +188,12 @@ describe("LocationDetailPanel", () => {
         onBack={vi.fn()}
         onSelectLocation={vi.fn()}
         onToggleBookmark={handleBookmark}
-        isBookmarked={false}
+        isBookmarked={true}
       />
     )
 
     const bmBtn = screen.getByTestId("bookmark-location-button")
+    expect(bmBtn.getAttribute("aria-pressed")).toBe("true")
     fireEvent.click(bmBtn)
     expect(handleBookmark).toHaveBeenCalledTimes(1)
     expect(handleBookmark).toHaveBeenCalledWith(parentLocation.id)

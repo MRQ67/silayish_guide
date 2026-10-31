@@ -15,7 +15,7 @@ import { CodeBadge } from "@/components/code-badge"
 import { CategoryIcon } from "@/components/category-icon"
 import { ShareLocationButton } from "@/components/share-location-button"
 import { ReportProblemDialog } from "@/components/report-problem-dialog"
-import { calculateOutlineCenter } from "@/lib/validations/outline"
+import { getLocationEffectiveCoordinates } from "@/lib/location-utils"
 import { useLanguage } from "@/components/language-provider"
 import {
   formatDistance,
@@ -37,35 +37,6 @@ export interface LocationDetailPanelProps {
   isBookmarked?: boolean
   onToggleBookmark?: (locationId: string) => void
   className?: string
-}
-
-function getEffectiveCoordinates(
-  loc: Location,
-  parentLoc: Location | null | undefined
-): { lat: number; lng: number } | null {
-  if (loc.lat != null && loc.lng != null) {
-    return { lat: loc.lat, lng: loc.lng }
-  }
-  if (loc.outline) {
-    try {
-      return calculateOutlineCenter(loc.outline)
-    } catch {
-      // ignore outline parsing failures
-    }
-  }
-  if (parentLoc) {
-    if (parentLoc.lat != null && parentLoc.lng != null) {
-      return { lat: parentLoc.lat, lng: parentLoc.lng }
-    }
-    if (parentLoc.outline) {
-      try {
-        return calculateOutlineCenter(parentLoc.outline)
-      } catch {
-        // ignore outline parsing failures
-      }
-    }
-  }
-  return null
 }
 
 export function LocationDetailPanel({
@@ -93,9 +64,13 @@ export function LocationDetailPanel({
 
   const backButtonRef = useRef<HTMLButtonElement>(null)
 
-  // Focus the back button when panel mounts and bind Escape key to close
+  // Focus the back button only once when panel first mounts
   useEffect(() => {
     backButtonRef.current?.focus()
+  }, [])
+
+  // Bind Escape key to close panel
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault()
@@ -116,7 +91,7 @@ export function LocationDetailPanel({
     ? allLocations.find((l) => l.id === location.parent_id)
     : null
 
-  const effectiveCoords = getEffectiveCoordinates(location, parentLocation)
+  const effectiveCoords = getLocationEffectiveCoordinates(location, allLocations)
   const googleMapsDirectionsUrl = effectiveCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${effectiveCoords.lat},${effectiveCoords.lng}`
     : null
@@ -232,6 +207,7 @@ export function LocationDetailPanel({
               <button
                 type="button"
                 onClick={onStartDirections}
+                aria-pressed={isRoutingActive}
                 data-testid="start-directions-button"
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 px-4 text-xs font-semibold shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -251,6 +227,7 @@ export function LocationDetailPanel({
               <button
                 type="button"
                 onClick={() => onToggleBookmark(location.id)}
+                aria-pressed={isBookmarked}
                 data-testid="bookmark-location-button"
                 aria-label={
                   isBookmarked ? t.unbookmarkPlace : t.bookmarkPlace
@@ -282,11 +259,11 @@ export function LocationDetailPanel({
                 href={googleMapsDirectionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`Directions to ${location.name} on Google Maps (opens in new tab)`}
+                aria-label={`${t.openInGoogleMaps}: ${location.name}`}
                 className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                <span>{t.directions}</span>
+                <span>{t.openInGoogleMaps}</span>
                 <span className="sr-only">(opens in new tab)</span>
               </a>
             )}

@@ -43,6 +43,15 @@ import { useTheme } from "@/components/theme-provider"
 
 fixLeafletDefaultIcon()
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+}
+
 interface MapBoundsControllerProps {
   visibleLocations: Location[]
 }
@@ -205,7 +214,7 @@ function OutlineLabels({ outlines }: OutlineLabelsProps) {
 
         const icon = L.divIcon({
           className: "pointer-events-none !bg-transparent !border-0",
-          html: `<div class="outline-code-badge font-stencil pointer-events-none select-none">${location.code}</div>`,
+          html: `<div class="outline-code-badge font-stencil pointer-events-none select-none">${escapeHtml(location.code)}</div>`,
           iconSize: [0, 0],
           iconAnchor: [0, 0],
         })
@@ -370,7 +379,7 @@ export default function CampusMap({
               className: "selected-dest-label",
               html: `<div class="bg-slate-900 text-white text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-xl border border-slate-700 whitespace-nowrap -translate-x-1/2 -translate-y-9 flex items-center gap-1.5 pointer-events-none select-none">
                 <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                <span>${selectedLocation.name}</span>
+                <span>${escapeHtml(selectedLocation.name)}</span>
               </div>`,
               iconSize: [0, 0],
               iconAnchor: [0, 0],
@@ -454,6 +463,8 @@ export default function CampusMap({
               key={`marker-${marker.id}`}
               position={marker.position}
               icon={pinIcon}
+              title={marker.location.name}
+              alt={marker.location.name}
               ref={(ref) => {
                 if (ref) {
                   markerRefs.current.set(marker.id, ref)

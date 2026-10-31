@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import dynamic from "next/dynamic"
 import {
   Bookmark,
@@ -74,26 +74,12 @@ export function CampusExplorer({
   const [isRoutingActive, setIsRoutingActive] = useState(false)
   const [isListeningVoice, setIsListeningVoice] = useState(false)
 
-  // Initialize selectedLocation from URL ?location= parameter on initial render
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(() => {
-    if (typeof window === "undefined") return null
-    const params = new URLSearchParams(window.location.search)
-    const locationParam = params.get("location")
-    if (!locationParam) return null
+  // Initialize selectedLocation to null to prevent SSR hydration mismatch, then sync on mount
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
 
-    const normalizedParam = normalizeCode(locationParam)
-    return (
-      initialLocations.find(
-        (loc) =>
-          (loc.code && normalizeCode(loc.code) === normalizedParam) ||
-          loc.id === locationParam
-      ) || null
-    )
-  })
-
-  // Listen to browser Back/Forward navigation
+  // Sync selectedLocation from URL on client mount and history change
   useEffect(() => {
-    const handlePopState = () => {
+    const syncFromUrl = () => {
       const params = new URLSearchParams(window.location.search)
       const locationParam = params.get("location")
       if (!locationParam) {
@@ -101,6 +87,7 @@ export function CampusExplorer({
         setIsRoutingActive(false)
         return
       }
+
       const normalizedParam = normalizeCode(locationParam)
       const match = initialLocations.find(
         (loc) =>
@@ -110,8 +97,9 @@ export function CampusExplorer({
       setSelectedLocation(match || null)
     }
 
-    window.addEventListener("popstate", handlePopState)
-    return () => window.removeEventListener("popstate", handlePopState)
+    syncFromUrl()
+    window.addEventListener("popstate", syncFromUrl)
+    return () => window.removeEventListener("popstate", syncFromUrl)
   }, [initialLocations])
 
   // Derive categories from initialCategories or unique locations
@@ -173,7 +161,7 @@ export function CampusExplorer({
     return map
   }, [userLocation, initialLocations])
 
-  // Optionally sort filtered locations by distance to user when proximity sorting is active
+  // Sort filtered locations deterministically by distance (with alphabetical fallback on tie or Infinity)
   const displayLocations = useMemo(() => {
     if (!userLocation || !sortByNearest) {
       return filteredLocations
@@ -181,6 +169,9 @@ export function CampusExplorer({
     return [...filteredLocations].sort((a, b) => {
       const distA = distanceMap.get(a.id) ?? Infinity
       const distB = distanceMap.get(b.id) ?? Infinity
+      if (distA === distB) {
+        return a.name.localeCompare(b.name)
+      }
       return distA - distB
     })
   }, [filteredLocations, userLocation, sortByNearest, distanceMap])
@@ -193,6 +184,9 @@ export function CampusExplorer({
       return [...list].sort((a, b) => {
         const distA = distanceMap.get(a.id) ?? Infinity
         const distB = distanceMap.get(b.id) ?? Infinity
+        if (distA === distB) {
+          return a.name.localeCompare(b.name)
+        }
         return distA - distB
       })
     }
@@ -224,7 +218,7 @@ export function CampusExplorer({
     }
   }, [selectedLocation])
 
-  const handleSelectLocation = (location: Location) => {
+  const handleSelectLocation = useCallback((location: Location) => {
     lastSelectedIdRef.current = location.id
     setSelectedLocation(location)
     if (mobileView === "list") {
@@ -236,9 +230,10 @@ export function CampusExplorer({
       url.searchParams.set("location", param)
       window.history.replaceState({}, "", url.toString())
     }
-  }
+  }, [mobileView])
 
-  const handleDeselectLocation = () => {
+  // Memoized to prevent focus stealing in LocationDetailPanel
+  const handleDeselectLocation = useCallback(() => {
     setSelectedLocation(null)
     setIsRoutingActive(false)
     if (typeof window !== "undefined") {
@@ -246,15 +241,15 @@ export function CampusExplorer({
       url.searchParams.delete("location")
       window.history.replaceState({}, "", url.toString())
     }
-  }
+  }, [])
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setSearchQuery("")
     setSelectedCategoryId(null)
     handleDeselectLocation()
-  }
+  }, [handleDeselectLocation])
 
-  const handleStartDirections = () => {
+  const handleStartDirections = useCallback(() => {
     if (isRoutingActive) {
       setIsRoutingActive(false)
       return
@@ -274,10 +269,38 @@ export function CampusExplorer({
         { enableHighAccuracy: true, timeout: 8000 }
       )
     }
-  }
+  }, [isRoutingActive, mobileView, userLocation])
+
+  // Manage Web Speech API instance and prevent resource leaks
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort()
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [])
 
   const handleVoiceSearch = () => {
     if (typeof window === "undefined") return
+
+    // If already active, abort on toggle
+    if (isListeningVoice && recognitionRef.current) {
+      try {
+        recognitionRef.current.abort()
+      } catch {
+        // ignore
+      }
+      setIsListeningVoice(false)
+      return
+    }
+
     const SpeechRecognition =
       (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
         .SpeechRecognition ||
@@ -285,7 +308,6 @@ export function CampusExplorer({
         .webkitSpeechRecognition
 
     if (!SpeechRecognition) {
-      alert("Voice search is not supported in this browser.")
       return
     }
 
@@ -295,6 +317,7 @@ export function CampusExplorer({
       recognition.lang = locale === "am" ? "am-ET" : "en-US"
       recognition.interimResults = false
       recognition.maxAlternatives = 1
+      recognitionRef.current = recognition
 
       setIsListeningVoice(true)
 
