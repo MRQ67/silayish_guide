@@ -189,6 +189,21 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     expect(screen.getByText("Registrar Office")).toBeDefined()
   })
 
+  it("switches to saved tab and displays saved empty state when none saved", () => {
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+      />
+    )
+
+    const savedTab = screen.getByTestId("tab-saved")
+    fireEvent.click(savedTab)
+
+    expect(savedTab.getAttribute("aria-selected")).toBe("true")
+    expect(screen.getByText("No saved places yet")).toBeDefined()
+  })
+
   it("toggles mobile view mode between split, map, and list", () => {
     render(
       <CampusExplorer
