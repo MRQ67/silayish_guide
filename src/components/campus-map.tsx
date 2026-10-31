@@ -5,6 +5,7 @@ import {
   MapContainer,
   Marker,
   Polygon,
+  Polyline,
   Popup,
   TileLayer,
   useMap,
@@ -34,6 +35,8 @@ import {
   isOutlineWideEnough,
 } from "@/lib/outline-utils"
 import { calculateOutlineBounds } from "@/lib/validations/outline"
+import { getLocationEffectiveCoordinates } from "@/lib/location-utils"
+import { createCategoryPinIcon } from "@/lib/category-pin-utils"
 import { MapPopup } from "@/components/map-popup"
 import { LocateControl } from "@/components/locate-control"
 import { useTheme } from "@/components/theme-provider"
@@ -76,6 +79,7 @@ interface MapSelectionControllerProps {
   markerRefs: React.RefObject<Map<string, L.Marker>>
   polygonRefs: React.RefObject<Map<string, L.Polygon>>
   allLocations?: Location[]
+  isRoutingActive?: boolean
 }
 
 function MapSelectionController({
@@ -83,11 +87,12 @@ function MapSelectionController({
   markerRefs,
   polygonRefs,
   allLocations,
+  isRoutingActive,
 }: MapSelectionControllerProps) {
   const map = useMap()
 
   useEffect(() => {
-    if (!selectedLocation) return
+    if (!selectedLocation || isRoutingActive) return
 
     // 1. If location has its own outline, fit map to outline and open popup
     if (selectedLocation.outline) {
@@ -126,7 +131,36 @@ function MapSelectionController({
       const marker = markerRefs.current?.get(selectedLocation.id)
       marker?.openPopup()
     }
-  }, [map, selectedLocation, markerRefs, polygonRefs, allLocations])
+  }, [map, selectedLocation, markerRefs, polygonRefs, allLocations, isRoutingActive])
+
+  return null
+}
+
+interface MapRouteControllerProps {
+  isRoutingActive?: boolean
+  userLocation?: [number, number] | null
+  destCoords?: { lat: number; lng: number } | null
+}
+
+function MapRouteController({
+  isRoutingActive,
+  userLocation,
+  destCoords,
+}: MapRouteControllerProps) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!isRoutingActive || !userLocation || !destCoords) return
+    const bounds = L.latLngBounds([
+      userLocation,
+      [destCoords.lat, destCoords.lng],
+    ])
+    map.fitBounds(bounds, {
+      padding: [70, 70],
+      maxZoom: 18,
+      animate: true,
+    })
+  }, [isRoutingActive, userLocation, destCoords, map])
 
   return null
 }
@@ -194,8 +228,11 @@ export interface CampusMapProps {
   allLocations?: Location[]
   markers?: MapMarker[]
   selectedLocation: Location | null
+  userLocation?: [number, number] | null
+  isRoutingActive?: boolean
   onSelectLocation?: (location: Location) => void
   onUserLocationChange?: (coords: [number, number]) => void
+  onToggleRouting?: (active: boolean) => void
   className?: string
 }
 
@@ -204,6 +241,8 @@ export default function CampusMap({
   allLocations,
   markers,
   selectedLocation,
+  userLocation,
+  isRoutingActive = false,
   onSelectLocation,
   onUserLocationChange,
   className = "",
@@ -266,6 +305,15 @@ export default function CampusMap({
     return getTileLayerConfig(undefined, resolvedTheme)
   }, [resolvedTheme])
 
+  // Effective coordinates for currently selected destination
+  const destCoords = useMemo(() => {
+    if (!selectedLocation) return null
+    return getLocationEffectiveCoordinates(
+      selectedLocation,
+      allLocations || locations
+    )
+  }, [selectedLocation, allLocations, locations])
+
   return (
     <div
       data-testid="campus-map"
@@ -291,7 +339,45 @@ export default function CampusMap({
           markerRefs={markerRefs}
           polygonRefs={polygonRefs}
           allLocations={allLocations}
+          isRoutingActive={isRoutingActive}
         />
+        <MapRouteController
+          isRoutingActive={isRoutingActive}
+          userLocation={userLocation}
+          destCoords={destCoords}
+        />
+
+        {/* Walking Route Polyline (Mockup Style: dashed blue path) */}
+        {isRoutingActive && userLocation && destCoords && (
+          <Polyline
+            positions={[userLocation, [destCoords.lat, destCoords.lng]]}
+            pathOptions={{
+              color: "#2563eb",
+              weight: 4,
+              dashArray: "6, 10",
+              lineCap: "round",
+              lineJoin: "round",
+            }}
+          />
+        )}
+
+        {/* Selected Destination Tooltip Badge (Mockup Style: [ Health Center ]) */}
+        {selectedLocation && destCoords && (
+          <Marker
+            key={`selected-badge-${selectedLocation.id}`}
+            position={[destCoords.lat, destCoords.lng]}
+            icon={L.divIcon({
+              className: "selected-dest-label",
+              html: `<div class="bg-slate-900 text-white text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-xl border border-slate-700 whitespace-nowrap -translate-x-1/2 -translate-y-9 flex items-center gap-1.5 pointer-events-none select-none">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                <span>${selectedLocation.name}</span>
+              </div>`,
+              iconSize: [0, 0],
+              iconAnchor: [0, 0],
+            })}
+            interactive={false}
+          />
+        )}
 
         {/* Building outlines */}
         {outlines.map((location) => {
@@ -355,27 +441,36 @@ export default function CampusMap({
         {/* Building code labels placed inside outlines */}
         <OutlineLabels outlines={outlines} />
 
-        {/* Standalone pins for locations without outline and without parent outline */}
-        {displayMarkers.map((marker) => (
-          <Marker
-            key={`marker-${marker.id}`}
-            position={marker.position}
-            ref={(ref) => {
-              if (ref) {
-                markerRefs.current.set(marker.id, ref)
-              } else {
-                markerRefs.current.delete(marker.id)
-              }
-            }}
-            eventHandlers={{
-              click: () => onSelectLocation?.(marker.location),
-            }}
-          >
-            <Popup>
-              <MapPopup location={marker.location} />
-            </Popup>
-          </Marker>
-        ))}
+        {/* Category-Colored Pins for standalone markers (Mockup style) */}
+        {displayMarkers.map((marker) => {
+          const isSelected = selectedLocation?.id === marker.id
+          const pinIcon = createCategoryPinIcon(
+            marker.location.category?.name,
+            isSelected
+          )
+
+          return (
+            <Marker
+              key={`marker-${marker.id}`}
+              position={marker.position}
+              icon={pinIcon}
+              ref={(ref) => {
+                if (ref) {
+                  markerRefs.current.set(marker.id, ref)
+                } else {
+                  markerRefs.current.delete(marker.id)
+                }
+              }}
+              eventHandlers={{
+                click: () => onSelectLocation?.(marker.location),
+              }}
+            >
+              <Popup>
+                <MapPopup location={marker.location} />
+              </Popup>
+            </Marker>
+          )
+        })}
 
         {/* Floating Geolocation Control */}
         <LocateControl onLocationFound={onUserLocationChange} />
