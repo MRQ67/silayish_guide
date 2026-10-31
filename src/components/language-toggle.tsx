@@ -18,7 +18,7 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
         className={`inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold text-muted-foreground ${className}`}
         disabled
       >
-        <Globe className="h-3.5 w-3.5" />
+        <Globe className="h-3.5 w-3.5" aria-hidden="true" />
         <span>EN</span>
       </button>
     )
@@ -35,8 +35,10 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
       data-testid="language-toggle"
       className={`inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${className}`}
     >
-      <Globe className="h-3.5 w-3.5" />
-      <span>{locale === "en" ? "አማ" : "EN"}</span>
+      <Globe className="h-3.5 w-3.5" aria-hidden="true" />
+      <span lang={locale === "en" ? "am" : "en"}>
+        {locale === "en" ? "አማ" : "EN"}
+      </span>
     </button>
   )
 }

@@ -33,6 +33,13 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${dmSans.variable} ${stardosStencil.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('ddu-theme');var d=t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="flex min-h-full flex-col bg-background text-foreground transition-colors duration-200">
         <ThemeProvider defaultTheme="light">
           <LanguageProvider defaultLocale="en">

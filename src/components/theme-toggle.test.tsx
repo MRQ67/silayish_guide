@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { ThemeProvider, useTheme } from "./theme-provider"
 import { ThemeToggle } from "./theme-toggle"
@@ -10,6 +10,14 @@ function ThemeConsumer() {
 }
 
 describe("ThemeProvider & ThemeToggle", () => {
+  beforeEach(() => {
+    try {
+      localStorage.clear()
+    } catch {
+      // ignore
+    }
+  })
+
   it("renders theme toggle button with accessible label and switches theme", () => {
     render(
       <ThemeProvider defaultTheme="light">

@@ -1,7 +1,12 @@
+"use client"
+
 import type { Location } from "@/lib/types"
 import { CodeBadge } from "@/components/code-badge"
 import { ReportProblemDialog } from "@/components/report-problem-dialog"
 import { ShareLocationButton } from "@/components/share-location-button"
+import { useLanguage } from "@/components/language-provider"
+import { translations } from "@/lib/i18n"
+import type { TranslationDictionary } from "@/lib/i18n"
 
 export interface MapPopupProps {
   location: Location
@@ -9,6 +14,14 @@ export interface MapPopupProps {
 }
 
 export function MapPopup({ location, className = "" }: MapPopupProps) {
+  let t: TranslationDictionary = translations.en
+  try {
+    const langCtx = useLanguage()
+    t = langCtx.t
+  } catch {
+    // outside provider
+  }
+
   return (
     <div
       data-testid="map-popup"
@@ -25,7 +38,7 @@ export function MapPopup({ location, className = "" }: MapPopupProps) {
       )}
       {location.opening_hours && (
         <div className="text-[11px] text-muted-foreground">
-          <span className="font-medium text-foreground">Hours: </span>
+          <span className="font-medium text-foreground">{t.operatingHours}: </span>
           {location.opening_hours}
         </div>
       )}

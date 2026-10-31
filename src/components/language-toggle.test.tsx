@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { LanguageProvider, useLanguage } from "./language-provider"
 import { LanguageToggle } from "./language-toggle"
@@ -15,6 +15,14 @@ function LanguageConsumer() {
 }
 
 describe("LanguageProvider & LanguageToggle", () => {
+  beforeEach(() => {
+    try {
+      localStorage.clear()
+    } catch {
+      // ignore
+    }
+  })
+
   it("renders language toggle and switches between English and Amharic", () => {
     render(
       <LanguageProvider defaultLocale="en">

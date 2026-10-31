@@ -156,7 +156,7 @@ export function LocationDetailPanel({
                   data-testid="detail-distance-badge"
                   className="inline-flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
                 >
-                  <Navigation className="h-3 w-3" />
+                  <Navigation className="h-3 w-3" aria-hidden="true" />
                   <span>{formatDistance(distanceMeters, locale)}</span>
                 </span>
               )}

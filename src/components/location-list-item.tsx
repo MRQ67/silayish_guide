@@ -45,7 +45,7 @@ export function LocationListItem({
               data-testid="location-distance-badge"
               className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
             >
-              <Navigation className="h-2.5 w-2.5" />
+              <Navigation className="h-2.5 w-2.5" aria-hidden="true" />
               <span>{formatDistance(distanceMeters, locale)}</span>
             </span>
           )}

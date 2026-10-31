@@ -61,6 +61,11 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
 
   beforeEach(() => {
     window.history.replaceState({}, "", "/")
+    try {
+      localStorage.clear()
+    } catch {
+      // ignore
+    }
   })
 
   it("renders all category filter chips with location counts", () => {

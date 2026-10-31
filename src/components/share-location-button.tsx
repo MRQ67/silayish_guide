@@ -3,6 +3,9 @@
 import { useState } from "react"
 import { Check, Share2 } from "lucide-react"
 import type { Location } from "@/lib/types"
+import { useLanguage } from "@/components/language-provider"
+import { translations } from "@/lib/i18n"
+import type { TranslationDictionary } from "@/lib/i18n"
 
 export interface ShareLocationButtonProps {
   location: Location
@@ -25,6 +28,14 @@ export function ShareLocationButton({
 }: ShareLocationButtonProps) {
   const [copied, setCopied] = useState(false)
 
+  let t: TranslationDictionary = translations.en
+  try {
+    const langCtx = useLanguage()
+    t = langCtx.t
+  } catch {
+    // outside provider
+  }
+
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation()
     const shareUrl = getLocationShareUrl(location)
@@ -32,30 +43,33 @@ export function ShareLocationButton({
     if (
       typeof navigator !== "undefined" &&
       navigator.share &&
-      /mobile|android|iphone|ipad/i.test(navigator.userAgent)
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ url: shareUrl })
     ) {
       try {
         await navigator.share({
           title: `${location.name} - DDU Campus Guide`,
-          text: `Check out ${location.name} on the Dire Dawa University Campus Guide`,
+          text: location.description || `Find ${location.name} on the DDU Campus Map`,
           url: shareUrl,
         })
         return
-      } catch {
-        // Fall back to clipboard if user cancels share or it fails
+      } catch (err: unknown) {
+        if ((err as Error)?.name === "AbortError") {
+          return
+        }
       }
     }
 
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(shareUrl)
       } else if (typeof document !== "undefined") {
-        const textarea = document.createElement("textarea")
-        textarea.value = shareUrl
-        document.body.appendChild(textarea)
-        textarea.select()
+        const input = document.createElement("input")
+        input.value = shareUrl
+        document.body.appendChild(input)
+        input.select()
         document.execCommand("copy")
-        document.body.removeChild(textarea)
+        document.body.removeChild(input)
       }
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
@@ -76,13 +90,13 @@ export function ShareLocationButton({
         <>
           <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
           <span className="font-medium text-primary" aria-live="polite">
-            Link copied!
+            {t.linkCopied}
           </span>
         </>
       ) : (
         <>
           <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>Share</span>
+          <span>{t.share}</span>
         </>
       )}
     </button>

@@ -18,6 +18,7 @@ export interface TranslationDictionary {
   operatingHours: string
   directions: string
   share: string
+  linkCopied: string
   reportProblem: string
   backToAll: string
   floorPrefix: string
@@ -52,6 +53,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
     operatingHours: "Hours",
     directions: "Directions",
     share: "Share",
+    linkCopied: "Link copied!",
     reportProblem: "Report a Problem",
     backToAll: "Back to all locations",
     floorPrefix: "Floor",
@@ -84,6 +86,7 @@ export const translations: Record<Locale, TranslationDictionary> = {
     operatingHours: "የስራ ሰዓት",
     directions: "አቅጣጫዎች",
     share: "አጋራ",
+    linkCopied: "ሊንኩ ተቀድቷል!",
     reportProblem: "ችግር ሪፖርት አድርግ",
     backToAll: "ወደ ሁሉም ቦታዎች ተመለስ",
     floorPrefix: "ፎቅ",
@@ -130,7 +133,11 @@ export const categoryTranslations: Record<string, Record<Locale, string>> = {
   },
 }
 
-export function getLocalizedCategoryName(categoryName: string, locale: Locale): string {
+export function getLocalizedCategoryName(
+  categoryName?: string | null,
+  locale: Locale = "en"
+): string {
+  if (!categoryName || typeof categoryName !== "string") return ""
   if (locale === "en") return categoryName
   const lower = categoryName.toLowerCase().trim()
   return categoryTranslations[lower]?.[locale] || categoryName

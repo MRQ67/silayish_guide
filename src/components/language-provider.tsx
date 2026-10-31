@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState } from "react"
+import React, { createContext, useContext, useEffect, useState } from "react"
 import type { Locale, TranslationDictionary } from "@/lib/i18n"
 import { translations } from "@/lib/i18n"
 
@@ -40,6 +40,25 @@ export function LanguageProvider({
   const [locale, setLocaleState] = useState<Locale>(() =>
     getStoredLocale(defaultLocale)
   )
+
+  // Synchronize document.documentElement.lang attribute
+  useEffect(() => {
+    document.documentElement.lang = locale
+  }, [locale])
+
+  // Listen for storage events across tabs
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (
+        e.key === STORAGE_KEY &&
+        (e.newValue === "en" || e.newValue === "am")
+      ) {
+        setLocaleState(e.newValue)
+      }
+    }
+    window.addEventListener("storage", handleStorage)
+    return () => window.removeEventListener("storage", handleStorage)
+  }, [])
 
   const setLocale = (nextLocale: Locale) => {
     try {

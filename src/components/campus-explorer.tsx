@@ -148,19 +148,34 @@ export function CampusExplorer({
     return result
   }, [initialLocations, selectedCategoryId, searchQuery])
 
+  // Precompute distances between user location and all campus locations in O(N)
+  const distanceMap = useMemo(() => {
+    if (!userLocation) return new Map<string, number>()
+    const map = new Map<string, number>()
+    for (const loc of initialLocations) {
+      const dist = getLocationDistanceMeters(
+        loc,
+        userLocation,
+        initialLocations
+      )
+      if (dist != null) {
+        map.set(loc.id, dist)
+      }
+    }
+    return map
+  }, [userLocation, initialLocations])
+
   // Optionally sort filtered locations by distance to user when proximity sorting is active
   const displayLocations = useMemo(() => {
     if (!userLocation || !sortByNearest) {
       return filteredLocations
     }
     return [...filteredLocations].sort((a, b) => {
-      const distA =
-        getLocationDistanceMeters(a, userLocation, initialLocations) ?? Infinity
-      const distB =
-        getLocationDistanceMeters(b, userLocation, initialLocations) ?? Infinity
+      const distA = distanceMap.get(a.id) ?? Infinity
+      const distB = distanceMap.get(b.id) ?? Infinity
       return distA - distB
     })
-  }, [filteredLocations, userLocation, sortByNearest, initialLocations])
+  }, [filteredLocations, userLocation, sortByNearest, distanceMap])
 
   const mapItemCount = useMemo(() => {
     const outlinesCount = filteredLocations.filter((l) => Boolean(l.outline)).length
@@ -325,11 +340,7 @@ export function CampusExplorer({
                 allLocations={initialLocations}
                 onBack={handleDeselectLocation}
                 onSelectLocation={handleSelectLocation}
-                distanceMeters={getLocationDistanceMeters(
-                  selectedLocation,
-                  userLocation,
-                  initialLocations
-                )}
+                distanceMeters={distanceMap.get(selectedLocation.id) ?? null}
               />
             ) : (
               /* Locations Tab: Search + Categories + List */
@@ -402,7 +413,7 @@ export function CampusExplorer({
                             : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 hover:bg-blue-100"
                         )}
                       >
-                        <Navigation className="h-3 w-3" />
+                        <Navigation className="h-3 w-3" aria-hidden="true" />
                         <span>{t.nearby}</span>
                       </button>
                     )}
@@ -458,7 +469,7 @@ export function CampusExplorer({
                     </span>
                     {mapItemCount > 0 && (
                       <span>
-                        {mapItemCount === 1 ? "1 on map" : `${mapItemCount} on map`}
+                        {mapItemCount === 1 ? `1 ${t.onMap}` : `${mapItemCount} ${t.onMap}`}
                       </span>
                     )}
                   </div>
@@ -487,11 +498,8 @@ export function CampusExplorer({
                   ) : (
                     <div className="flex flex-col gap-2.5">
                       {displayLocations.map((location) => {
-                        const distanceMeters = getLocationDistanceMeters(
-                          location,
-                          userLocation,
-                          initialLocations
-                        )
+                        const distanceMeters =
+                          distanceMap.get(location.id) ?? null
 
                         return (
                           <LocationListItem

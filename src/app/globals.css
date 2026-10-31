@@ -159,3 +159,21 @@
   pointer-events: none;
   user-select: none;
 }
+
+
+/* Leaflet Dark Mode Popup Overrides */
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.dark .leaflet-popup-close-button {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .leaflet-popup-close-button:hover {
+  color: var(--foreground) !important;
+}
