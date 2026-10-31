@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Circle, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import { Navigation } from "lucide-react"
@@ -36,11 +36,21 @@ export function LocateControl({
   )
   const [accuracy, setAccuracy] = useState<number | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleLocate = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setErrorMessage("Geolocation is not supported by your browser.")
-      setTimeout(() => setErrorMessage(null), 4000)
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current)
+      errorTimeoutRef.current = setTimeout(() => setErrorMessage(null), 4000)
       return
     }
 
@@ -83,7 +93,8 @@ export function LocateControl({
         } else {
           setErrorMessage("Unable to determine your location.")
         }
-        setTimeout(() => setErrorMessage(null), 5000)
+        if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current)
+        errorTimeoutRef.current = setTimeout(() => setErrorMessage(null), 5000)
       },
       {
         enableHighAccuracy: true,

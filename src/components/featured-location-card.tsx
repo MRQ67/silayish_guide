@@ -190,8 +190,8 @@ export function FeaturedLocationCard({
             type="button"
             onClick={onViewDetails}
             data-testid="featured-view-details-button"
-            aria-label="View full details"
-            title="View full details"
+            aria-label={t.viewFullDetails}
+            title={t.viewFullDetails}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Info className="h-4 w-4" />

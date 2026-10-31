@@ -218,17 +218,41 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     // Initial state is half (h-[50dvh])
     expect(directory.className).toContain("h-[50dvh]")
 
-    // Click 1: half -> full (h-[90dvh])
+    // Click 1: half -> full (h-[calc(100dvh-5.5rem)])
     fireEvent.click(handle)
-    expect(directory.className).toContain("h-[90dvh]")
+    expect(directory.className).toContain("h-[calc(100dvh-5.5rem)]")
 
-    // Click 2: full -> peek (h-[76px])
+    // Click 2: full -> peek (h-[88px])
     fireEvent.click(handle)
-    expect(directory.className).toContain("h-[76px]")
+    expect(directory.className).toContain("h-[88px]")
 
     // Click 3: peek -> half (h-[50dvh])
     fireEvent.click(handle)
     expect(directory.className).toContain("h-[50dvh]")
+  })
+
+  it("supports keyboard navigation with arrow keys across floating dock tabs", () => {
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+        initialServices={sampleServices}
+      />
+    )
+
+    const locTab = screen.getByTestId("tab-locations")
+    const srvTab = screen.getByTestId("tab-services")
+    const savTab = screen.getByTestId("tab-saved")
+
+    locTab.focus()
+    fireEvent.keyDown(locTab, { key: "ArrowRight" })
+    expect(srvTab.getAttribute("aria-selected")).toBe("true")
+
+    fireEvent.keyDown(srvTab, { key: "ArrowRight" })
+    expect(savTab.getAttribute("aria-selected")).toBe("true")
+
+    fireEvent.keyDown(savTab, { key: "ArrowLeft" })
+    expect(srvTab.getAttribute("aria-selected")).toBe("true")
   })
 
   it("toggles distance sorting when filter sliders or closest button is clicked", () => {

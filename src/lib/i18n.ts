@@ -43,6 +43,8 @@ export interface TranslationDictionary {
   placesNearby: string
   youAreHere: string
   stopDirections: string
+  viewFullDetails: string
+  voiceSearch: string
 }
 
 export const translations: Record<Locale, TranslationDictionary> = {
@@ -89,6 +91,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
     placesNearby: "places nearby",
     youAreHere: "You are here",
     stopDirections: "Clear route",
+    viewFullDetails: "View full details",
+    voiceSearch: "Voice search",
   },
   am: {
     appName: "ድሬዳዋ ዩኒቨርሲቲ ካምፓስ መመሪያ",
@@ -133,6 +137,8 @@ export const translations: Record<Locale, TranslationDictionary> = {
     placesNearby: "አቅራቢያ ያሉ ቦታዎች",
     youAreHere: "አሁን ያሉበት ቦታ",
     stopDirections: "መንገድ አጥፋ",
+    viewFullDetails: "ሙሉ ዝርዝር ይመልከቱ",
+    voiceSearch: "በድምፅ ይፈልጉ",
   },
 }
 

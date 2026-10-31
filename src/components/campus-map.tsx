@@ -103,10 +103,19 @@ function MapSelectionController({
   useEffect(() => {
     if (!selectedLocation || isRoutingActive) return
 
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768
+    const topPadding = isMobile ? 140 : 50
+    const bottomPadding = isMobile ? Math.round(window.innerHeight * 0.45) : 50
+
     // 1. If location has its own outline, fit map to outline and open popup
     if (selectedLocation.outline) {
       const bounds = calculateOutlineBounds(selectedLocation.outline)
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 19, animate: true })
+      map.fitBounds(bounds, {
+        paddingTopLeft: [50, topPadding],
+        paddingBottomRight: [50, bottomPadding],
+        maxZoom: 19,
+        animate: true,
+      })
       const polygon = polygonRefs.current?.get(selectedLocation.id)
       const labelPos = getOutlineLabelPosition(selectedLocation.outline)
       polygon?.openPopup(labelPos)
@@ -118,7 +127,12 @@ function MapSelectionController({
       const parent = allLocations.find((l) => l.id === selectedLocation.parent_id)
       if (parent?.outline) {
         const bounds = calculateOutlineBounds(parent.outline)
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 19, animate: true })
+        map.fitBounds(bounds, {
+          paddingTopLeft: [50, topPadding],
+          paddingBottomRight: [50, bottomPadding],
+          maxZoom: 19,
+          animate: true,
+        })
         const parentPolygon = polygonRefs.current?.get(parent.id)
         const labelPos = getOutlineLabelPosition(parent.outline)
         parentPolygon?.openPopup(labelPos)
@@ -137,6 +151,9 @@ function MapSelectionController({
         selectedLocation.lng,
       ]
       map.setView(targetPos, Math.max(map.getZoom(), 17), { animate: true })
+      if (isMobile) {
+        map.panBy([0, -Math.round(window.innerHeight * 0.16)], { animate: true })
+      }
       const marker = markerRefs.current?.get(selectedLocation.id)
       marker?.openPopup()
     }
@@ -325,6 +342,20 @@ export default function CampusMap({
     )
   }, [selectedLocation, allLocations, locations])
 
+  // Memoized destination marker icon with font-sans
+  const selectedBadgeIcon = useMemo(() => {
+    if (!selectedLocation) return null
+    return L.divIcon({
+      className: "selected-dest-label",
+      html: `<div class="bg-slate-900 text-white font-sans text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-xl border border-slate-700 whitespace-nowrap -translate-x-1/2 -translate-y-9 flex items-center gap-1.5 pointer-events-none select-none">
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+        <span>${escapeHtml(selectedLocation.name)}</span>
+      </div>`,
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    })
+  }, [selectedLocation])
+
   return (
     <div
       data-testid="campus-map"
@@ -373,19 +404,11 @@ export default function CampusMap({
         )}
 
         {/* Selected Destination Tooltip Badge (Mockup Style: [ Health Center ]) */}
-        {selectedLocation && destCoords && (
+        {selectedLocation && destCoords && selectedBadgeIcon && (
           <Marker
             key={`selected-badge-${selectedLocation.id}`}
             position={[destCoords.lat, destCoords.lng]}
-            icon={L.divIcon({
-              className: "selected-dest-label",
-              html: `<div class="bg-slate-900 text-white text-[11px] font-semibold px-2.5 py-1 rounded-full shadow-xl border border-slate-700 whitespace-nowrap -translate-x-1/2 -translate-y-9 flex items-center gap-1.5 pointer-events-none select-none">
-                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                <span>${escapeHtml(selectedLocation.name)}</span>
-              </div>`,
-              iconSize: [0, 0],
-              iconAnchor: [0, 0],
-            })}
+            icon={selectedBadgeIcon}
             interactive={false}
           />
         )}

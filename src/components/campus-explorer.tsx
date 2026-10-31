@@ -77,7 +77,7 @@ export function CampusExplorer({
   const [isRoutingActive, setIsRoutingActive] = useState(false)
   const [isListeningVoice, setIsListeningVoice] = useState(false)
 
-  // Touch tracking for mobile draggable bottom sheet
+  // Touch tracking exclusively on the sheet handle container (prevents hijacking list scrolling)
   const touchStartYRef = useRef<number | null>(null)
   const touchCurrentYRef = useRef<number | null>(null)
 
@@ -235,7 +235,6 @@ export function CampusExplorer({
     lastSelectedIdRef.current = location.id
     setSelectedLocation(location)
     setShowFullDetails(false)
-    // Expand sheet if collapsed so user immediately views the place card
     setSheetSnap((prev) => (prev === "peek" ? "half" : prev))
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href)
@@ -282,7 +281,7 @@ export function CampusExplorer({
     }
   }, [isRoutingActive, userLocation])
 
-  // Sheet swipe handlers
+  // Sheet swipe handlers mounted exclusively on the handle/header container
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartYRef.current = e.touches[0].clientY
     touchCurrentYRef.current = e.touches[0].clientY
@@ -290,6 +289,11 @@ export function CampusExplorer({
 
   const handleTouchMove = (e: React.TouchEvent) => {
     touchCurrentYRef.current = e.touches[0].clientY
+  }
+
+  const handleTouchCancel = () => {
+    touchStartYRef.current = null
+    touchCurrentYRef.current = null
   }
 
   const handleTouchEnd = () => {
@@ -337,6 +341,7 @@ export function CampusExplorer({
         } catch {
           // ignore
         }
+        recognitionRef.current = null
       }
     }
   }, [])
@@ -350,6 +355,7 @@ export function CampusExplorer({
       } catch {
         // ignore
       }
+      recognitionRef.current = null
       setIsListeningVoice(false)
       return
     }
@@ -381,19 +387,45 @@ export function CampusExplorer({
           setSearchQuery(transcript)
         }
         setIsListeningVoice(false)
+        recognitionRef.current = null
       }
 
       recognition.onerror = () => {
         setIsListeningVoice(false)
+        recognitionRef.current = null
       }
 
       recognition.onend = () => {
         setIsListeningVoice(false)
+        recognitionRef.current = null
       }
 
       recognition.start()
     } catch {
       setIsListeningVoice(false)
+      recognitionRef.current = null
+    }
+  }
+
+  // Keyboard navigation for FloatingNavigationDock tabs
+  const handleDockKeyDown = (
+    e: React.KeyboardEvent,
+    currentTab: "locations" | "services" | "saved"
+  ) => {
+    const tabs: ("locations" | "services" | "saved")[] = ["locations", "services", "saved"]
+    const idx = tabs.indexOf(currentTab)
+    if (e.key === "ArrowRight") {
+      e.preventDefault()
+      const nextTab = tabs[(idx + 1) % tabs.length]
+      setActiveTab(nextTab)
+      if (nextTab !== "locations") handleDeselectLocation()
+      document.getElementById(`tab-${nextTab}`)?.focus()
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault()
+      const prevTab = tabs[(idx - 1 + tabs.length) % tabs.length]
+      setActiveTab(prevTab)
+      if (prevTab !== "locations") handleDeselectLocation()
+      document.getElementById(`tab-${prevTab}`)?.focus()
     }
   }
 
@@ -413,6 +445,7 @@ export function CampusExplorer({
           <Search className="pointer-events-none absolute left-3.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
+            aria-label={t.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.searchPlaceholder}
@@ -432,8 +465,8 @@ export function CampusExplorer({
             <button
               type="button"
               onClick={handleVoiceSearch}
-              aria-label="Voice search"
-              title="Voice search"
+              aria-label={t.voiceSearch}
+              title={t.voiceSearch}
               className={cn(
                 "rounded-full p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isListeningVoice
@@ -552,6 +585,7 @@ export function CampusExplorer({
           setActiveTab("locations")
           if (sheetSnap === "peek") setSheetSnap("half")
         }}
+        onKeyDown={(e) => handleDockKeyDown(e, "locations")}
         className={cn(
           "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           activeTab === "locations"
@@ -575,6 +609,7 @@ export function CampusExplorer({
           handleDeselectLocation()
           if (sheetSnap === "peek") setSheetSnap("half")
         }}
+        onKeyDown={(e) => handleDockKeyDown(e, "services")}
         className={cn(
           "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           activeTab === "services"
@@ -598,6 +633,7 @@ export function CampusExplorer({
           handleDeselectLocation()
           if (sheetSnap === "peek") setSheetSnap("half")
         }}
+        onKeyDown={(e) => handleDockKeyDown(e, "saved")}
         className={cn(
           "flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           activeTab === "saved"
@@ -614,9 +650,9 @@ export function CampusExplorer({
   )
 
   const snapClasses = {
-    peek: "h-[76px]",
+    peek: "h-[88px]",
     half: "h-[50dvh]",
-    full: "h-[90dvh]",
+    full: "h-[calc(100dvh-5.5rem)]",
   }
 
   return (
@@ -645,10 +681,10 @@ export function CampusExplorer({
           locateControlClassName={cn(
             "transition-all duration-300 md:bottom-5",
             sheetSnap === "peek"
-              ? "bottom-24"
+              ? "bottom-28"
               : sheetSnap === "half"
                 ? "bottom-[calc(50dvh+1rem)]"
-                : "bottom-[calc(90dvh+1rem)]"
+                : "hidden"
           )}
         />
       </section>
@@ -656,25 +692,27 @@ export function CampusExplorer({
       {/* Mobile Draggable Bottom Sheet & Desktop Sidebar */}
       <section
         aria-label="Campus Directory"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         className={cn(
           "fixed bottom-0 left-0 right-0 z-[450] flex flex-col rounded-t-[28px] border-t border-border/80 bg-[#FAF9F6]/95 dark:bg-card/95 backdrop-blur-md shadow-2xl transition-all duration-300 ease-out",
           snapClasses[sheetSnap],
           "md:static md:z-auto md:h-full md:w-[400px] lg:w-[440px] md:rounded-none md:border-t-0 md:border-r md:shadow-none md:bg-background"
         )}
       >
-        {/* Mobile Drag Handle */}
+        {/* Mobile Drag Handle Container (Touch handlers exclusively on the handle/header) */}
         <div
           data-testid="bottom-sheet-handle-container"
-          onClick={handleCycleSnap}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
           className="md:hidden flex flex-col items-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing select-none"
         >
           <button
             type="button"
             data-testid="bottom-sheet-handle"
+            onClick={handleCycleSnap}
             aria-label={`Bottom sheet is ${sheetSnap}. Click to toggle height.`}
+            aria-expanded={sheetSnap !== "peek"}
             className="h-1.5 w-12 rounded-full bg-muted-foreground/30 hover:bg-muted-foreground/50 transition-colors"
           />
         </div>
@@ -685,7 +723,13 @@ export function CampusExplorer({
         </div>
 
         {/* Subheader: Places Nearby count and Closest sort toggle (Mockup style) */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/60 shrink-0 text-xs">
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
+          className="flex items-center justify-between px-4 py-2 border-b border-border/60 shrink-0 text-xs"
+        >
           <div className="flex items-center gap-1.5 font-bold text-foreground sm:text-sm">
             <span>
               {displayLocations.length}{" "}
