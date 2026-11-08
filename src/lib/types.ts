@@ -15,8 +15,10 @@ export interface MultiPolygon extends GeoJsonObject {
   coordinates: Position[][][]
 }
 
-export interface Feature<G = Polygon | MultiPolygon, P = Record<string, unknown>>
-  extends GeoJsonObject {
+export interface Feature<
+  G = Polygon | MultiPolygon,
+  P = Record<string, unknown>,
+> extends GeoJsonObject {
   type: "Feature"
   geometry: G
   properties: P | null
@@ -37,6 +39,7 @@ export interface Category {
   id: string
   name: string
   icon?: string | null
+  color?: string | null
 }
 
 export interface Location {

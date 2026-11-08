@@ -5,10 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { Category, Location, LocationType } from "@/lib/types"
 import { Button } from "@/components/ui/button"
+import { CoordinatePicker } from "@/components/admin/coordinate-picker"
 import {
-  createLocationAction,
-  updateLocationAction,
-} from "@/app/admin/actions"
+  fromCoordinatePair,
+  toCoordinatePair,
+} from "@/lib/coordinate-picker-utils"
+import { createLocationAction, updateLocationAction } from "@/app/admin/actions"
 
 export interface ParentBuildingOption {
   id: string
@@ -45,9 +47,18 @@ export function LocationForm({
     category_id: initialData?.category_id || "",
     parent_id: initialData?.parent_id || "",
     description: initialData?.description || "",
-    lat: initialData?.lat !== null && initialData?.lat !== undefined ? String(initialData.lat) : "",
-    lng: initialData?.lng !== null && initialData?.lng !== undefined ? String(initialData.lng) : "",
-    floor: initialData?.floor !== null && initialData?.floor !== undefined ? String(initialData.floor) : "",
+    lat:
+      initialData?.lat !== null && initialData?.lat !== undefined
+        ? String(initialData.lat)
+        : "",
+    lng:
+      initialData?.lng !== null && initialData?.lng !== undefined
+        ? String(initialData.lng)
+        : "",
+    floor:
+      initialData?.floor !== null && initialData?.floor !== undefined
+        ? String(initialData.floor)
+        : "",
     opening_hours: initialData?.opening_hours || "",
     photo_url: initialData?.photo_url || "",
     outline: initialData?.outline
@@ -369,6 +380,15 @@ export function LocationForm({
           )}
         </div>
 
+        <div className="sm:col-span-2">
+          <CoordinatePicker
+            value={toCoordinatePair(formData.lat, formData.lng)}
+            onChange={(point) =>
+              setFormData((prev) => ({ ...prev, ...fromCoordinatePair(point) }))
+            }
+          />
+        </div>
+
         {/* Description */}
         <div className="sm:col-span-2">
           <label
@@ -438,7 +458,8 @@ export function LocationForm({
             className="mt-1 block w-full font-mono rounded-md border border-input bg-background px-3 py-2 text-xs text-foreground shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 outline-none"
           />
           <p className="mt-1 text-xs text-muted-foreground">
-            Optional GeoJSON coordinates for drawing building boundaries on the campus map.
+            Optional GeoJSON coordinates for drawing building boundaries on the
+            campus map.
           </p>
           {fieldErrors.outline && (
             <p className="mt-1 text-xs text-destructive">

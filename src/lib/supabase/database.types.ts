@@ -20,18 +20,21 @@ export interface Database {
           id: string
           name: string
           icon: string | null
+          color: string | null
           created_at: string
         }
         Insert: {
           id?: string
           name: string
           icon?: string | null
+          color?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           name?: string
           icon?: string | null
+          color?: string | null
           created_at?: string
         }
         Relationships: []
@@ -207,4 +210,3 @@ export interface Database {
     }
   }
 }
-

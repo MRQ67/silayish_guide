@@ -40,11 +40,11 @@ async function LocationLoader() {
     const [locationsRes, categoriesRes, servicesRes] = await Promise.all([
       supabase
         .from("locations")
-        .select("*, category:categories(id, name, icon)")
+        .select("*, category:categories(id, name, icon, color)")
         .order("name", { ascending: true }),
       supabase
         .from("categories")
-        .select("id, name, icon")
+        .select("id, name, icon, color")
         .order("name", { ascending: true }),
       supabase
         .from("services")

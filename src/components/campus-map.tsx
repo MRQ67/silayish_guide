@@ -24,10 +24,7 @@ import {
   isValidCoordinate,
 } from "@/lib/map-utils"
 import { fixLeafletDefaultIcon } from "@/lib/leaflet-fix"
-import {
-  getTileLayerConfig,
-  OUTLINE_LABEL_MIN_ZOOM,
-} from "@/lib/map-config"
+import { getTileLayerConfig, OUTLINE_LABEL_MIN_ZOOM } from "@/lib/map-config"
 import {
   geoJsonToLeafletPositions,
   getOutlineLabelPosition,
@@ -124,7 +121,9 @@ function MapSelectionController({
 
     // 2. If location has a parent that has an outline, fit to parent's outline
     if (selectedLocation.parent_id && allLocations) {
-      const parent = allLocations.find((l) => l.id === selectedLocation.parent_id)
+      const parent = allLocations.find(
+        (l) => l.id === selectedLocation.parent_id
+      )
       if (parent?.outline) {
         const bounds = calculateOutlineBounds(parent.outline)
         map.fitBounds(bounds, {
@@ -152,12 +151,21 @@ function MapSelectionController({
       ]
       map.setView(targetPos, Math.max(map.getZoom(), 17), { animate: true })
       if (isMobile) {
-        map.panBy([0, -Math.round(window.innerHeight * 0.16)], { animate: true })
+        map.panBy([0, -Math.round(window.innerHeight * 0.16)], {
+          animate: true,
+        })
       }
       const marker = markerRefs.current?.get(selectedLocation.id)
       marker?.openPopup()
     }
-  }, [map, selectedLocation, markerRefs, polygonRefs, allLocations, isRoutingActive])
+  }, [
+    map,
+    selectedLocation,
+    markerRefs,
+    polygonRefs,
+    allLocations,
+    isRoutingActive,
+  ])
 
   return null
 }
@@ -420,7 +428,7 @@ export default function CampusMap({
             selectedLocation?.id === location.id ||
             selectedLocation?.parent_id === location.id
           const positions = geoJsonToLeafletPositions(location.outline)
-          const style = getOutlineStyle(location.category?.name, isSelected, false)
+          const style = getOutlineStyle(location.category, isSelected, false)
 
           return (
             <Polygon
@@ -479,7 +487,7 @@ export default function CampusMap({
         {displayMarkers.map((marker) => {
           const isSelected = selectedLocation?.id === marker.id
           const pinIcon = createCategoryPinIcon(
-            marker.location.category?.name,
+            marker.location.category,
             isSelected
           )
 

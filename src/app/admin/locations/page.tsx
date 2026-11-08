@@ -21,14 +21,19 @@ export default async function AdminLocationsPage() {
   try {
     const { data, error } = await supabase
       .from("locations")
-      .select(`
+      .select(
+        `
         *,
-        category:categories(id, name, icon)
-      `)
+        category:categories(id, name, icon, color)
+      `
+      )
       .order("name", { ascending: true })
 
     if (error) {
-      errorMessage = handleLocationError(error, "[admin] locations fetch failed")
+      errorMessage = handleLocationError(
+        error,
+        "[admin] locations fetch failed"
+      )
     } else {
       const rawLocations = (data as unknown as Location[]) || []
       locations = attachParentNames(rawLocations)

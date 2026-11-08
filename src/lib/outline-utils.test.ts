@@ -52,36 +52,36 @@ describe("label placement helper with concave shape", () => {
 describe("category color mapping", () => {
   it("maps academic category to blue tones", () => {
     const colors = getCategoryColors("Academics")
-    expect(colors.stroke).toBe("#1d4ed8")
-    expect(colors.fill).toBe("#3b82f6")
+    expect(colors.stroke).toBe("#1c4ab0")
+    expect(colors.fill).toBe("#2563eb")
   })
 
   it("maps administration category to amber tones", () => {
     const colors = getCategoryColors("Administration Building")
-    expect(colors.stroke).toBe("#b45309")
-    expect(colors.fill).toBe("#f59e0b")
+    expect(colors.stroke).toBe("#04714f")
+    expect(colors.fill).toBe("#059669")
   })
 
   it("maps student life category to green tones", () => {
     const colors = getCategoryColors("Student Life")
-    expect(colors.stroke).toBe("#047857")
-    expect(colors.fill).toBe("#10b981")
+    expect(colors.stroke).toBe("#6e26b0")
+    expect(colors.fill).toBe("#9333ea")
   })
 
   it("maps healthcare / facilities category to red/rose tones", () => {
     const colors = getCategoryColors("Healthcare & Facilities")
-    expect(colors.stroke).toBe("#be123c")
+    expect(colors.stroke).toBe("#b72f47")
     expect(colors.fill).toBe("#f43f5e")
   })
 
   it("falls back to slate gray for unknown or empty categories", () => {
     const emptyColors = getCategoryColors(null)
-    expect(emptyColors.stroke).toBe("#475569")
-    expect(emptyColors.fill).toBe("#94a3b8")
+    expect(emptyColors.stroke).toBe("#4b5768")
+    expect(emptyColors.fill).toBe("#64748b")
 
     const unknownColors = getCategoryColors("Other Category")
-    expect(unknownColors.stroke).toBe("#475569")
-    expect(unknownColors.fill).toBe("#94a3b8")
+    expect(unknownColors.stroke).toBe("#4b5768")
+    expect(unknownColors.fill).toBe("#64748b")
   })
 
   it("adjusts fillOpacity and border weights on hover and selected states", () => {
@@ -114,7 +114,10 @@ describe("geoJsonToLeafletPositions", () => {
       ],
     }
 
-    const leafletPositions = geoJsonToLeafletPositions(polygon) as [number, number][][]
+    const leafletPositions = geoJsonToLeafletPositions(polygon) as [
+      number,
+      number,
+    ][][]
     expect(leafletPositions).toEqual([
       [
         [9.617, 41.836],

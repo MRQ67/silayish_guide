@@ -2,15 +2,16 @@
 -- Provides initial categories, 5 sample campus locations, and core services for map testing
 
 -- 1. Insert Categories
-insert into public.categories (id, name, icon)
+insert into public.categories (id, name, icon, color)
 values
-  ('11111111-1111-1111-1111-111111111101', 'Academics', 'graduation-cap'),
-  ('11111111-1111-1111-1111-111111111102', 'Administration', 'building-2'),
-  ('11111111-1111-1111-1111-111111111103', 'Student Life', 'users'),
-  ('11111111-1111-1111-1111-111111111104', 'Healthcare & Facilities', 'heart-pulse')
+  ('11111111-1111-1111-1111-111111111101', 'Academics', 'graduation-cap', '#2563EB'),
+  ('11111111-1111-1111-1111-111111111102', 'Administration', 'building-2', '#059669'),
+  ('11111111-1111-1111-1111-111111111103', 'Student Life', 'users', '#9333EA'),
+  ('11111111-1111-1111-1111-111111111104', 'Healthcare & Facilities', 'heart-pulse', '#F43F5E')
 on conflict (id) do update set
   name = excluded.name,
-  icon = excluded.icon;
+  icon = excluded.icon,
+  color = excluded.color;
 
 -- 2. Insert 5 Sample Locations
 -- Sample 1: Main Administration Building (building)

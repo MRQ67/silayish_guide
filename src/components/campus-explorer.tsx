@@ -28,6 +28,7 @@ import { useLanguage } from "@/components/language-provider"
 import { getLocalizedCategoryName, translations } from "@/lib/i18n"
 import type { Locale, TranslationDictionary } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
+import { resolveCategoryStyle } from "@/lib/category-style"
 
 const CampusMap = dynamic(() => import("@/components/campus-map"), {
   ssr: false,
@@ -67,12 +68,18 @@ export function CampusExplorer({
 
   const { bookmarks, isBookmarked, toggleBookmark } = useBookmarks()
 
-  const [activeTab, setActiveTab] = useState<"locations" | "services" | "saved">("locations")
+  const [activeTab, setActiveTab] = useState<
+    "locations" | "services" | "saved"
+  >("locations")
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>("half")
   const [showFullDetails, setShowFullDetails] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null
+  )
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(
+    null
+  )
   const [sortByNearest, setSortByNearest] = useState(false)
   const [isRoutingActive, setIsRoutingActive] = useState(false)
   const [isListeningVoice, setIsListeningVoice] = useState(false)
@@ -82,7 +89,9 @@ export function CampusExplorer({
   const touchCurrentYRef = useRef<number | null>(null)
 
   // Initialize selectedLocation to null to prevent SSR hydration mismatch, then sync on mount
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
+    null
+  )
 
   // Sync selectedLocation from URL on client mount and history change
   useEffect(() => {
@@ -207,8 +216,13 @@ export function CampusExplorer({
   }, [initialLocations, bookmarks, userLocation, sortByNearest, distanceMap])
 
   const mapItemCount = useMemo(() => {
-    const outlinesCount = filteredLocations.filter((l) => Boolean(l.outline)).length
-    const markersCount = getMapMarkers(filteredLocations, initialLocations).length
+    const outlinesCount = filteredLocations.filter((l) =>
+      Boolean(l.outline)
+    ).length
+    const markersCount = getMapMarkers(
+      filteredLocations,
+      initialLocations
+    ).length
     return outlinesCount + markersCount
   }, [filteredLocations, initialLocations])
 
@@ -268,7 +282,11 @@ export function CampusExplorer({
     }
     setIsRoutingActive(true)
     setSheetSnap((prev) => (prev === "peek" ? "half" : prev))
-    if (!userLocation && typeof navigator !== "undefined" && navigator.geolocation) {
+    if (
+      !userLocation &&
+      typeof navigator !== "undefined" &&
+      navigator.geolocation
+    ) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setUserLocation([pos.coords.latitude, pos.coords.longitude])
@@ -297,7 +315,8 @@ export function CampusExplorer({
   }
 
   const handleTouchEnd = () => {
-    if (touchStartYRef.current == null || touchCurrentYRef.current == null) return
+    if (touchStartYRef.current == null || touchCurrentYRef.current == null)
+      return
     const deltaY = touchCurrentYRef.current - touchStartYRef.current
     const threshold = 35 // px
 
@@ -361,10 +380,18 @@ export function CampusExplorer({
     }
 
     const SpeechRecognition =
-      (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
-        .SpeechRecognition ||
-      (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
-        .webkitSpeechRecognition
+      (
+        window as unknown as {
+          SpeechRecognition?: unknown
+          webkitSpeechRecognition?: unknown
+        }
+      ).SpeechRecognition ||
+      (
+        window as unknown as {
+          SpeechRecognition?: unknown
+          webkitSpeechRecognition?: unknown
+        }
+      ).webkitSpeechRecognition
 
     if (!SpeechRecognition) {
       return
@@ -412,7 +439,11 @@ export function CampusExplorer({
     e: React.KeyboardEvent,
     currentTab: "locations" | "services" | "saved"
   ) => {
-    const tabs: ("locations" | "services" | "saved")[] = ["locations", "services", "saved"]
+    const tabs: ("locations" | "services" | "saved")[] = [
+      "locations",
+      "services",
+      "saved",
+    ]
     const idx = tabs.indexOf(currentTab)
     if (e.key === "ArrowRight") {
       e.preventDefault()
@@ -548,7 +579,11 @@ export function CampusExplorer({
                   : "bg-background/90 dark:bg-card/90 backdrop-blur-md border border-border/70 text-foreground hover:bg-muted/80"
               )}
             >
-              <CategoryIcon iconName={cat.icon} className="h-3.5 w-3.5" />
+              <CategoryIcon
+                iconName={cat.icon}
+                className="h-3.5 w-3.5"
+                style={{ color: resolveCategoryStyle(cat).color }}
+              />
               <span>{localizedName}</span>
               <span
                 className={cn(
@@ -884,14 +919,18 @@ export function CampusExplorer({
                     <div className="flex flex-col gap-2.5">
                       {displayLocations
                         .filter((loc) =>
-                          selectedLocation ? loc.id !== selectedLocation.id : true
+                          selectedLocation
+                            ? loc.id !== selectedLocation.id
+                            : true
                         )
                         .map((location) => (
                           <LocationListItem
                             key={location.id}
                             location={location}
                             onClick={handleSelectLocation}
-                            distanceMeters={distanceMap.get(location.id) ?? null}
+                            distanceMeters={
+                              distanceMap.get(location.id) ?? null
+                            }
                           />
                         ))}
                     </div>

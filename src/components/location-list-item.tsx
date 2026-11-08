@@ -39,7 +39,7 @@ export function LocationListItem({
     ? getLocalizedCategoryName(location.category.name, locale)
     : null
 
-  const badgeColors = getCategoryBadgeClasses(location.category?.name)
+  const badgeColors = getCategoryBadgeClasses(location.category)
 
   const content = (
     <div className="flex w-full items-center justify-between gap-3 text-left">
@@ -51,6 +51,7 @@ export function LocationListItem({
             badgeColors.bg,
             badgeColors.text
           )}
+          style={badgeColors.style}
         >
           <CategoryIcon
             iconName={location.category?.icon || "map-pin"}

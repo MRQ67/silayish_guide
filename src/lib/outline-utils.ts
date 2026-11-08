@@ -1,5 +1,7 @@
 import type { MultiPolygon, Polygon } from "@/lib/types"
 import polylabel from "polylabel"
+import type { Category } from "./types"
+import { resolveCategoryStyle } from "./category-style"
 
 export interface OutlineStyle {
   color: string
@@ -12,32 +14,26 @@ export interface OutlineStyle {
 /**
  * Palette mapping for categories on top of CARTO Positron light basemap.
  */
-export function getCategoryColors(categoryNameOrId?: string | null): {
+export function getCategoryColors(
+  categoryNameOrId?: Category | string | null
+): {
   stroke: string
   fill: string
   strokeSelected: string
 } {
-  const norm = (categoryNameOrId || "").toLowerCase().trim()
-  if (norm.includes("academic")) {
-    return { stroke: "#1d4ed8", fill: "#3b82f6", strokeSelected: "#1e40af" }
+  const colors = resolveCategoryStyle(categoryNameOrId)
+  return {
+    stroke: colors.stroke,
+    fill: colors.fill,
+    strokeSelected: colors.selectedStroke,
   }
-  if (norm.includes("admin")) {
-    return { stroke: "#b45309", fill: "#f59e0b", strokeSelected: "#92400e" }
-  }
-  if (norm.includes("student")) {
-    return { stroke: "#047857", fill: "#10b981", strokeSelected: "#065f46" }
-  }
-  if (norm.includes("health") || norm.includes("facilit")) {
-    return { stroke: "#be123c", fill: "#f43f5e", strokeSelected: "#9f1239" }
-  }
-  return { stroke: "#475569", fill: "#94a3b8", strokeSelected: "#334155" }
 }
 
 /**
  * Returns Leaflet path styles for an outline depending on category, hover, and selection states.
  */
 export function getOutlineStyle(
-  categoryName?: string | null,
+  categoryName?: Category | string | null,
   isSelected: boolean = false,
   isHovered: boolean = false
 ): OutlineStyle {

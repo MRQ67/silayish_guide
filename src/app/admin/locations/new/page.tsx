@@ -15,7 +15,7 @@ export default async function NewLocationPage() {
   const { supabase, user } = await requireAdmin()
 
   const [categoriesResult, buildingsResult] = await Promise.all([
-    supabase.from("categories").select("id, name, icon").order("name"),
+    supabase.from("categories").select("id, name, icon, color").order("name"),
     supabase
       .from("locations")
       .select("id, name, code")

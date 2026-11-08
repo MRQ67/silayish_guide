@@ -54,7 +54,7 @@ export function FeaturedLocationCard({
     ? getLocalizedCategoryName(location.category.name, locale)
     : null
 
-  const badgeColors = getCategoryBadgeClasses(location.category?.name)
+  const badgeColors = getCategoryBadgeClasses(location.category)
 
   return (
     <div
@@ -85,6 +85,7 @@ export function FeaturedLocationCard({
             badgeColors.bg,
             badgeColors.text
           )}
+          style={badgeColors.style}
         >
           <CategoryIcon
             iconName={location.category?.icon || "map-pin"}
@@ -153,9 +154,7 @@ export function FeaturedLocationCard({
             )}
           >
             <CornerUpRight className="h-4 w-4" />
-            <span>
-              {isRoutingActive ? t.stopDirections : t.getDirections}
-            </span>
+            <span>{isRoutingActive ? t.stopDirections : t.getDirections}</span>
           </button>
         )}
 

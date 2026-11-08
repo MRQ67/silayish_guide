@@ -37,7 +37,7 @@ export default async function EditLocationPage({
   try {
     ;[locationResult, categoriesResult, buildingsResult] = await Promise.all([
       supabase.from("locations").select("*").eq("id", id).maybeSingle(),
-      supabase.from("categories").select("id, name, icon").order("name"),
+      supabase.from("categories").select("id, name, icon, color").order("name"),
       supabase
         .from("locations")
         .select("id, name, code")
