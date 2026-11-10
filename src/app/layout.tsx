@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { DM_Sans, Stardos_Stencil } from "next/font/google"
-import { Header } from "@/components/header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { LanguageProvider } from "@/components/language-provider"
 import "./globals.css"
@@ -43,7 +42,6 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-background text-foreground transition-colors duration-200">
         <ThemeProvider defaultTheme="light">
           <LanguageProvider defaultLocale="en">
-            <Header />
             <div className="flex flex-1 flex-col">{children}</div>
           </LanguageProvider>
         </ThemeProvider>

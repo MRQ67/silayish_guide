@@ -1,9 +1,23 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render as rtlRender, screen } from "@testing-library/react"
+import type { ReactElement, ReactNode } from "react"
 import { CampusExplorer } from "./campus-explorer"
 import { LanguageProvider } from "./language-provider"
+import { ThemeProvider } from "./theme-provider"
 import type { Category, Location, Service } from "@/lib/types"
+
+function TestProviders({ children }: { children: ReactNode }) {
+  return (
+    <ThemeProvider>
+      <LanguageProvider>{children}</LanguageProvider>
+    </ThemeProvider>
+  )
+}
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: TestProviders })
+}
 
 vi.mock("next/dynamic", () => ({
   default: () => {

@@ -8,7 +8,7 @@ import { CampusExplorer } from "@/components/campus-explorer"
 
 function ExplorerLoading() {
   return (
-    <div className="relative flex h-[calc(100dvh-3.5rem)] w-full flex-col font-sans md:flex-row overflow-hidden">
+    <div className="relative flex h-dvh w-full flex-col font-sans md:flex-row overflow-hidden">
       <div className="absolute inset-0 flex w-full h-full items-center justify-center bg-muted/20 md:relative md:order-2 md:flex-1">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />

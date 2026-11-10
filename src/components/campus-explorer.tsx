@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import {
   ArrowUpDown,
   Bookmark,
+  Compass,
   Layers,
   MapPin,
   Mic,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
+import Link from "next/link"
 
 import type { Category, Location, Service } from "@/lib/types"
 import { normalizeCode, searchLocations } from "@/lib/search"
@@ -29,6 +31,8 @@ import { getLocalizedCategoryName, translations } from "@/lib/i18n"
 import type { Locale, TranslationDictionary } from "@/lib/i18n"
 import { cn } from "@/lib/utils"
 import { resolveCategoryStyle } from "@/lib/category-style"
+import { LanguageToggle } from "@/components/language-toggle"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const CampusMap = dynamic(() => import("@/components/campus-map"), {
   ssr: false,
@@ -463,11 +467,23 @@ export function CampusExplorer({
   // Filter Bar Header (Search Box + Sliders + Category Pills)
   const FilterHeaderContent = (
     <div className="flex flex-col gap-2.5 w-full">
-      {/* Title (Mockup header) */}
-      <div className="flex items-center justify-between px-1">
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground drop-shadow-xs">
-          {t.appName}
-        </h1>
+      <div className="flex min-w-0 items-center justify-between gap-2 px-1">
+        <Link
+          href="/"
+          className="flex min-w-0 items-center gap-2 rounded-md text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Compass className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+          <h1 className="truncate text-lg font-bold tracking-tight sm:text-xl">
+            {t.appName}
+          </h1>
+        </Link>
+        <nav
+          aria-label="Language and appearance settings"
+          className="flex shrink-0 items-center gap-1.5"
+        >
+          <LanguageToggle />
+          <ThemeToggle />
+        </nav>
       </div>
 
       {/* Search Input Row with Sliders Button */}
@@ -691,7 +707,7 @@ export function CampusExplorer({
   }
 
   return (
-    <div className="relative flex h-[calc(100dvh-3.5rem)] w-full flex-col font-sans md:flex-row overflow-hidden bg-background">
+    <div className="relative flex h-dvh w-full flex-col font-sans md:flex-row overflow-hidden bg-background">
       {/* Top Floating Header on Mobile (Search & Category Filters) */}
       <div className="md:hidden absolute top-0 left-0 right-0 z-[400] p-3 sm:p-4 bg-gradient-to-b from-background/90 via-background/60 to-transparent pointer-events-none">
         <div className="pointer-events-auto max-w-lg mx-auto">
