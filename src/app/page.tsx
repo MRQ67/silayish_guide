@@ -28,6 +28,28 @@ function ExplorerLoading() {
   )
 }
 
+function isMissingCategoryColorColumn(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false
+
+  const value = error as {
+    code?: unknown
+    message?: unknown
+    details?: unknown
+  }
+  const text = [value.message, value.details]
+    .filter((part): part is string => typeof part === "string")
+    .join(" ")
+
+  return (
+    (value.code === "42703" || value.code === "PGRST204") &&
+    /categories?/i.test(text) &&
+    /\bcolor\b/i.test(text)
+  ) ||
+    (/categories?/i.test(text) &&
+      /\bcolor\b/i.test(text) &&
+      /(does not exist|schema cache|not found|could not find)/i.test(text))
+}
+
 async function LocationLoader() {
   await connection()
   let locations: Location[] = []
@@ -52,16 +74,38 @@ async function LocationLoader() {
         .order("name", { ascending: true }),
     ])
 
-    if (locationsRes.error) {
-      errorMessage = handleLocationError(locationsRes.error)
-    } else {
-      locations = (locationsRes.data as Location[]) || []
+    let locationsData = locationsRes.data
+    let locationsError = locationsRes.error
+    if (isMissingCategoryColorColumn(locationsError)) {
+      const fallbackLocations = await supabase
+        .from("locations")
+        .select("*, category:categories(id, name, icon)")
+        .order("name", { ascending: true })
+      locationsData = fallbackLocations.data as typeof locationsData
+      locationsError = fallbackLocations.error
     }
 
-    if (categoriesRes.error) {
-      console.error("[categories] fetch error:", categoriesRes.error)
-    } else if (categoriesRes.data) {
-      categories = (categoriesRes.data as Category[]) || []
+    let categoriesData = categoriesRes.data
+    let categoriesError = categoriesRes.error
+    if (isMissingCategoryColorColumn(categoriesError)) {
+      const fallbackCategories = await supabase
+        .from("categories")
+        .select("id, name, icon")
+        .order("name", { ascending: true })
+      categoriesData = fallbackCategories.data as typeof categoriesData
+      categoriesError = fallbackCategories.error
+    }
+
+    if (locationsError) {
+      errorMessage = handleLocationError(locationsError)
+    } else {
+      locations = (locationsData as Location[]) || []
+    }
+
+    if (categoriesError) {
+      console.error("[categories] fetch error:", categoriesError)
+    } else if (categoriesData) {
+      categories = (categoriesData as Category[]) || []
     }
 
     if (servicesRes.error) {

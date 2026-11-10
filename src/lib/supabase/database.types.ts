@@ -106,6 +106,43 @@ export interface Database {
           },
         ]
       }
+      location_entrances: {
+        Row: {
+          id: string
+          location_id: string
+          name: string
+          lat: number
+          lng: number
+          accessibility: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          location_id: string
+          name: string
+          lat: number
+          lng: number
+          accessibility?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          location_id?: string
+          name?: string
+          lat?: number
+          lng?: number
+          accessibility?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_entrances_location_id_fkey"
+            columns: ["location_id"]
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           id: string
@@ -200,7 +237,18 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      replace_location_entrances: {
+        Args: { p_location_id: string; p_entrances: Json }
+        Returns: {
+          id: string
+          location_id: string
+          name: string
+          lat: number
+          lng: number
+          accessibility: string | null
+          created_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

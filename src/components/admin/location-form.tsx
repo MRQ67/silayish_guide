@@ -1,16 +1,23 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useMemo, useState, useTransition } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { Category, Location, LocationType } from "@/lib/types"
+import type {
+  Category,
+  Location,
+  LocationEntrance,
+  LocationType,
+} from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { CoordinatePicker } from "@/components/admin/coordinate-picker"
+import { BuildingMapEditor } from "@/components/admin/building-map-editor"
 import {
   fromCoordinatePair,
   toCoordinatePair,
 } from "@/lib/coordinate-picker-utils"
 import { createLocationAction, updateLocationAction } from "@/app/admin/actions"
+import { validateOutline } from "@/lib/validations/outline"
 
 export interface ParentBuildingOption {
   id: string
@@ -22,6 +29,7 @@ export interface LocationFormProps {
   initialData?: Location | null
   categories: Category[]
   buildings: ParentBuildingOption[]
+  initialEntrances?: LocationEntrance[]
 }
 
 const LOCATION_TYPES: { value: LocationType; label: string }[] = [
@@ -36,6 +44,7 @@ export function LocationForm({
   initialData,
   categories,
   buildings,
+  initialEntrances = [],
 }: LocationFormProps) {
   const router = useRouter()
   const isEditing = Boolean(initialData?.id)
@@ -69,6 +78,17 @@ export function LocationForm({
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const [isPending, startTransition] = useTransition()
+  const [entrancesDirty, setEntrancesDirty] = useState(false)
+  const outlineValidation = useMemo(
+    () =>
+      validateOutline(
+        formData.outline,
+        formData.lat && formData.lng
+          ? { lat: Number(formData.lat), lng: Number(formData.lng) }
+          : undefined
+      ),
+    [formData.outline, formData.lat, formData.lng]
+  )
 
   // Filter out self from parent options when editing
   const eligibleBuildings = isEditing
@@ -467,6 +487,37 @@ export function LocationForm({
             </p>
           )}
         </div>
+
+        <BuildingMapEditor
+          locationId={initialData?.id}
+          isBuilding={formData.type === "building"}
+          category={
+            categories.find(
+              (category) => category.id === formData.category_id
+            ) ?? null
+          }
+          latitude={formData.lat ? Number(formData.lat) : null}
+          longitude={formData.lng ? Number(formData.lng) : null}
+          savedOutline={initialData?.outline ?? null}
+          outline={
+            outlineValidation.valid
+              ? (outlineValidation.geometry ?? null)
+              : null
+          }
+          outlineError={
+            formData.outline.trim() && !outlineValidation.valid
+              ? outlineValidation.error
+              : null
+          }
+          onOutlineChange={(outline) =>
+            setFormData((previous) => ({
+              ...previous,
+              outline: outline ? JSON.stringify(outline) : "",
+            }))
+          }
+          initialEntrances={initialEntrances}
+          onEntrancesDirtyChange={setEntrancesDirty}
+        />
       </div>
 
       <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
@@ -475,7 +526,7 @@ export function LocationForm({
             Cancel
           </Button>
         </Link>
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending || entrancesDirty}>
           {isPending
             ? isEditing
               ? "Saving changes..."
@@ -485,6 +536,14 @@ export function LocationForm({
               : "Create location"}
         </Button>
       </div>
+      {entrancesDirty && (
+        <p
+          role="status"
+          className="text-right text-xs text-amber-700 dark:text-amber-300"
+        >
+          Save or discard entrance edits before saving this location.
+        </p>
+      )}
     </form>
   )
 }

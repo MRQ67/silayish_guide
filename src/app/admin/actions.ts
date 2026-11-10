@@ -96,7 +96,10 @@ export async function createLocationAction(
   if (error) {
     return {
       success: false,
-      error: handleDatabaseMutationError(error, "[admin] create location failed"),
+      error: handleDatabaseMutationError(
+        error,
+        "[admin] create location failed"
+      ),
     }
   }
 
@@ -139,6 +142,30 @@ export async function updateLocationAction(
   const locationData = { ...parseResult.data }
   delete locationData.id
 
+  if (locationData.type !== "building") {
+    const { count, error } = await supabase
+      .from("location_entrances")
+      .select("id", { count: "exact", head: true })
+      .eq("location_id", idResult.data)
+    if (error) {
+      return {
+        success: false,
+        error: "Unable to check this location's entrances.",
+      }
+    }
+    if ((count ?? 0) > 0) {
+      return {
+        success: false,
+        fieldErrors: {
+          type: [
+            "Remove the building entrances before changing this location type.",
+          ],
+        },
+        error: "This building still has named entrances.",
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("locations")
     .update(locationData as never)
@@ -149,7 +176,10 @@ export async function updateLocationAction(
   if (error) {
     return {
       success: false,
-      error: handleDatabaseMutationError(error, "[admin] update location failed"),
+      error: handleDatabaseMutationError(
+        error,
+        "[admin] update location failed"
+      ),
     }
   }
 
@@ -173,12 +203,18 @@ export async function deleteLocationAction(id: string): Promise<ActionResult> {
     }
   }
 
-  const { error } = await supabase.from("locations").delete().eq("id", idResult.data)
+  const { error } = await supabase
+    .from("locations")
+    .delete()
+    .eq("id", idResult.data)
 
   if (error) {
     return {
       success: false,
-      error: handleDatabaseMutationError(error, "[admin] delete location failed"),
+      error: handleDatabaseMutationError(
+        error,
+        "[admin] delete location failed"
+      ),
     }
   }
 

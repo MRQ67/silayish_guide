@@ -9,7 +9,7 @@ import {
   LocationForm,
   type ParentBuildingOption,
 } from "@/components/admin/location-form"
-import type { Category, Location } from "@/lib/types"
+import type { Category, Location, LocationEntrance } from "@/lib/types"
 
 interface EditLocationPageProps {
   params: Promise<{ id: string }>
@@ -33,17 +33,27 @@ export default async function EditLocationPage({
   let locationResult
   let categoriesResult
   let buildingsResult
+  let entrancesResult
 
   try {
-    ;[locationResult, categoriesResult, buildingsResult] = await Promise.all([
-      supabase.from("locations").select("*").eq("id", id).maybeSingle(),
-      supabase.from("categories").select("id, name, icon, color").order("name"),
-      supabase
-        .from("locations")
-        .select("id, name, code")
-        .eq("type", "building")
-        .order("name"),
-    ])
+    ;[locationResult, categoriesResult, buildingsResult, entrancesResult] =
+      await Promise.all([
+        supabase.from("locations").select("*").eq("id", id).maybeSingle(),
+        supabase
+          .from("categories")
+          .select("id, name, icon, color")
+          .order("name"),
+        supabase
+          .from("locations")
+          .select("id, name, code")
+          .eq("type", "building")
+          .order("name"),
+        supabase
+          .from("location_entrances")
+          .select("*")
+          .eq("location_id", id)
+          .order("created_at"),
+      ])
   } catch (err) {
     const errorMessage = handleLocationError(
       err,
@@ -66,9 +76,9 @@ export default async function EditLocationPage({
 
   // 2. Check query error. If there is an error, log it and show generic error UI.
   // Never call notFound() for a failed query.
-  if (locationResult.error) {
+  if (locationResult.error || entrancesResult.error) {
     const errorMessage = handleLocationError(
-      locationResult.error,
+      locationResult.error || entrancesResult.error,
       "[admin] location edit query failed"
     )
     return (
@@ -94,6 +104,7 @@ export default async function EditLocationPage({
   const location = locationResult.data as Location
   const categories = (categoriesResult.data as Category[]) || []
   const buildings = (buildingsResult.data as ParentBuildingOption[]) || []
+  const entrances = (entrancesResult.data as LocationEntrance[]) || []
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -120,6 +131,7 @@ export default async function EditLocationPage({
             initialData={location}
             categories={categories}
             buildings={buildings}
+            initialEntrances={entrances}
           />
         </div>
       </main>

@@ -6,6 +6,25 @@ export interface OutlineValidationResult {
   error?: string
 }
 
+export const MAX_OUTLINE_POSITIONS = 1000
+
+function cross(a: number[], b: number[], c: number[]): number {
+  return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+}
+
+function segmentsIntersect(
+  a: number[],
+  b: number[],
+  c: number[],
+  d: number[]
+): boolean {
+  const abC = cross(a, b, c)
+  const abD = cross(a, b, d)
+  const cdA = cross(c, d, a)
+  const cdB = cross(c, d, b)
+  return abC * abD < 0 && cdA * cdB < 0
+}
+
 /**
  * Calculates Haversine distance in meters between two lat/lng coordinates.
  */
@@ -33,9 +52,10 @@ export function haversineDistanceMeters(
  * Extracts a GeoJSON Polygon or MultiPolygon geometry from a pasted geometry,
  * Feature, or FeatureCollection containing exactly one feature.
  */
-export function extractGeoJsonGeometry(
-  input: unknown
-): { geometry?: Polygon | MultiPolygon; error?: string } {
+export function extractGeoJsonGeometry(input: unknown): {
+  geometry?: Polygon | MultiPolygon
+  error?: string
+} {
   if (input === null || input === undefined || input === "") {
     return { error: "No GeoJSON provided" }
   }
@@ -93,7 +113,8 @@ export function extractGeoJsonGeometry(
   }
 
   return {
-    error: "GeoJSON must be a Polygon, MultiPolygon, Feature, or single-feature FeatureCollection",
+    error:
+      "GeoJSON must be a Polygon, MultiPolygon, Feature, or single-feature FeatureCollection",
   }
 }
 
@@ -101,9 +122,10 @@ export function extractGeoJsonGeometry(
  * Validates ring structure, closed state, position count, and coordinate ranges.
  * Coordinates must be [longitude, latitude] with longitude in [-180, 180] and latitude in [-90, 90].
  */
-export function validateOutlineGeometry(
-  geometry: Polygon | MultiPolygon
-): { valid: boolean; error?: string } {
+export function validateOutlineGeometry(geometry: Polygon | MultiPolygon): {
+  valid: boolean
+  error?: string
+} {
   if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") {
     return {
       valid: false,
@@ -120,6 +142,8 @@ export function validateOutlineGeometry(
     return { valid: false, error: "Polygon coordinates array cannot be empty" }
   }
 
+  let totalPositions = 0
+
   for (const poly of polygons) {
     if (!Array.isArray(poly) || poly.length === 0) {
       return { valid: false, error: "Polygon must contain at least one ring" }
@@ -133,6 +157,13 @@ export function validateOutlineGeometry(
         return {
           valid: false,
           error: "Each polygon ring must have at least 4 positions",
+        }
+      }
+      totalPositions += ring.length
+      if (totalPositions > MAX_OUTLINE_POSITIONS) {
+        return {
+          valid: false,
+          error: `Outline cannot contain more than ${MAX_OUTLINE_POSITIONS} positions`,
         }
       }
 
@@ -149,7 +180,8 @@ export function validateOutlineGeometry(
       ) {
         return {
           valid: false,
-          error: "Ring is not closed: the first and last positions must be identical",
+          error:
+            "Ring is not closed: the first and last positions must be identical",
         }
       }
 
@@ -157,7 +189,8 @@ export function validateOutlineGeometry(
         if (!Array.isArray(pos) || pos.length < 2) {
           return {
             valid: false,
-            error: "Coordinate position must have at least two numbers: [longitude, latitude]",
+            error:
+              "Coordinate position must have at least two numbers: [longitude, latitude]",
           }
         }
         const [lng, lat] = pos
@@ -167,7 +200,10 @@ export function validateOutlineGeometry(
           Number.isNaN(lng) ||
           Number.isNaN(lat)
         ) {
-          return { valid: false, error: "Coordinate values must be valid numbers" }
+          return {
+            valid: false,
+            error: "Coordinate values must be valid numbers",
+          }
         }
         if (lng < -180 || lng > 180) {
           return {
@@ -182,6 +218,40 @@ export function validateOutlineGeometry(
           }
         }
       }
+
+      const segmentCount = ring.length - 1
+      for (let first = 0; first < segmentCount; first++) {
+        if (
+          ring[first][0] === ring[first + 1][0] &&
+          ring[first][1] === ring[first + 1][1]
+        ) {
+          return {
+            valid: false,
+            error: "Polygon ring cannot contain repeated adjacent positions",
+          }
+        }
+        for (let second = first + 1; second < segmentCount; second++) {
+          if (
+            second === first + 1 ||
+            (first === 0 && second === segmentCount - 1)
+          ) {
+            continue
+          }
+          if (
+            segmentsIntersect(
+              ring[first],
+              ring[first + 1],
+              ring[second],
+              ring[second + 1]
+            )
+          ) {
+            return {
+              valid: false,
+              error: "Polygon ring edges cannot cross each other",
+            }
+          }
+        }
+      }
     }
   }
 
@@ -191,9 +261,10 @@ export function validateOutlineGeometry(
 /**
  * Calculates the center [lat, lng] of an outline geometry.
  */
-export function calculateOutlineCenter(
-  geometry: Polygon | MultiPolygon
-): { lat: number; lng: number } {
+export function calculateOutlineCenter(geometry: Polygon | MultiPolygon): {
+  lat: number
+  lng: number
+} {
   const polygons: number[][][][] =
     geometry.type === "Polygon"
       ? [geometry.coordinates as number[][][]]

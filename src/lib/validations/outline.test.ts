@@ -168,6 +168,24 @@ describe("validateOutlineGeometry", () => {
     expect(result.valid).toBe(false)
     expect(result.error).toContain("Longitude 190 is out of range")
   })
+
+  it("rejects a self-intersecting ring produced by invalid vertex edits", () => {
+    const bowTie: Polygon = {
+      type: "Polygon",
+      coordinates: [
+        [
+          [0, 0],
+          [2, 2],
+          [0, 2],
+          [2, 0],
+          [0, 0],
+        ],
+      ],
+    }
+    const result = validateOutlineGeometry(bowTie)
+    expect(result.valid).toBe(false)
+    expect(result.error).toContain("edges cannot cross")
+  })
 })
 
 describe("validateOutline distance check against location coordinates", () => {

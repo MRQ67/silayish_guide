@@ -61,6 +61,16 @@ export interface Location {
   updated_at?: string
 }
 
+export interface LocationEntrance {
+  id: string
+  location_id: string
+  name: string
+  lat: number
+  lng: number
+  accessibility: string | null
+  created_at: string
+}
+
 export interface Service {
   id: string
   name: string
