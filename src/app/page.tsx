@@ -6,6 +6,9 @@ import type {
   Category,
   Location,
   PedestrianPath,
+  PedestrianGraphNode,
+  PedestrianPathConnection,
+  LocationEntrance,
   Service,
 } from "@/lib/types"
 import { handleLocationError } from "@/lib/errors"
@@ -61,11 +64,15 @@ async function LocationLoader() {
   let categories: Category[] = []
   let services: Service[] = []
   let pedestrianPaths: PedestrianPath[] = []
+  let pedestrianNodes: PedestrianGraphNode[] = []
+  let pedestrianConnections: PedestrianPathConnection[] = []
+  let entrances: LocationEntrance[] = []
+  let routingDataError: string | null = null
   let errorMessage: string | null = null
 
   try {
     const supabase = await createClient()
-    const [locationsRes, categoriesRes, servicesRes, pathsRes] =
+    const [locationsRes, categoriesRes, servicesRes, pathsRes, nodesRes, connectionsRes, entrancesRes] =
       await Promise.all([
         supabase
           .from("locations")
@@ -84,6 +91,9 @@ async function LocationLoader() {
           .select("*")
           .eq("is_active", true)
           .order("name", { ascending: true }),
+        supabase.from("pedestrian_graph_nodes").select("*"),
+        supabase.from("pedestrian_path_connections").select("*"),
+        supabase.from("location_entrances").select("*").order("name", { ascending: true }),
       ])
 
     let locationsData = locationsRes.data
@@ -131,6 +141,15 @@ async function LocationLoader() {
     } else if (pathsRes.data) {
       pedestrianPaths = (pathsRes.data as unknown as PedestrianPath[]) || []
     }
+    const graphError = pathsRes.error || nodesRes.error || connectionsRes.error || entrancesRes.error
+    if (graphError) {
+      console.error("[pedestrian routing] graph data unavailable:", graphError)
+      routingDataError = "Pedestrian routing requires pedestrian_paths, location_entrances, pedestrian_graph_nodes, and pedestrian_path_connections. Apply migrations 20261108000000, 20261110000000, and 20261111000000, then verify public read policies."
+    } else {
+      pedestrianNodes = nodesRes.data as PedestrianGraphNode[]
+      pedestrianConnections = connectionsRes.data as PedestrianPathConnection[]
+      entrances = entrancesRes.data as LocationEntrance[]
+    }
   } catch (err) {
     unstable_rethrow(err)
     errorMessage = handleLocationError(err)
@@ -171,6 +190,10 @@ async function LocationLoader() {
         initialCategories={categories}
         initialServices={services}
         initialPedestrianPaths={pedestrianPaths}
+        initialPedestrianNodes={pedestrianNodes}
+        initialPedestrianConnections={pedestrianConnections}
+        initialEntrances={entrances}
+        routingDataError={routingDataError}
       />
     </main>
   )

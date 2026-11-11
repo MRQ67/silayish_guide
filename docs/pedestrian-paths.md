@@ -35,13 +35,18 @@ restricted while an entrance node is still linked.
 
 Entrance accessibility is currently free-form text. It is shown to admins but
 is not parsed into routing constraints; routing must not infer accessibility
-from phrases in this field. The graph also has no directionality metadata, so a
-future routing design must explicitly confirm whether all paths are traversable
-in both directions before assuming that behavior.
+from phrases in this field. The graph has no directionality metadata. Milestone
+4B therefore treats active paths as traversable in both directions, matching
+the campus walking-network assumption; the routing implementation documents
+this directly.
 
-The current map only displays active paths. Routing still needs to validate
-active status, accessibility and path-type restrictions, and entrance links.
-Do not claim the campus network is route-ready until internal intersections
-are represented by shared nodes and entrance links are audited. A future
-routing milestone must explicitly model connector costs and level transitions;
-it must not infer links from coordinate proximity alone.
+Public routing uses Dijkstra over explicit shared nodes and vertex references.
+It ignores inactive paths, rejects stale references, and never infers links from
+coordinate proximity. Wheelchair routing excludes stairs and paths not
+explicitly marked accessible. Entrance accessibility text is not interpreted,
+so the interface reports that entrance accessibility is unknown. GPS may snap
+only to a connected graph node within 35 meters; this connector is included in
+displayed distance. Walking time is approximate at 80 m/min. Routes do not
+generate turn-by-turn instructions. Production coverage depends on admins
+explicitly linking traversable segments, junctions, and entrances; routing does
+not repair incomplete connectivity.

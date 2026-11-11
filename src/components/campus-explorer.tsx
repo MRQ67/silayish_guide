@@ -20,11 +20,15 @@ import type {
   Category,
   Location,
   PedestrianPath,
+  PedestrianGraphNode,
+  PedestrianPathConnection,
+  LocationEntrance,
   Service,
 } from "@/lib/types"
 import { normalizeCode, searchLocations } from "@/lib/search"
 import { getMapMarkers } from "@/lib/map-utils"
 import { getLocationDistanceMeters } from "@/lib/location-utils"
+import { calculatePedestrianRoute, calculateRouteFromGps, type RouteResult } from "@/lib/pedestrian-routing"
 import { useBookmarks } from "@/lib/use-bookmarks"
 import { LocationListItem } from "@/components/location-list-item"
 import { LocationDetailPanel } from "@/components/location-detail-panel"
@@ -63,6 +67,10 @@ export interface CampusExplorerProps {
   initialCategories?: Category[]
   initialServices?: Service[]
   initialPedestrianPaths?: PedestrianPath[]
+  initialPedestrianNodes?: PedestrianGraphNode[]
+  initialPedestrianConnections?: PedestrianPathConnection[]
+  initialEntrances?: LocationEntrance[]
+  routingDataError?: string | null
 }
 
 export function CampusExplorer({
@@ -70,6 +78,10 @@ export function CampusExplorer({
   initialCategories = [],
   initialServices = [],
   initialPedestrianPaths = [],
+  initialPedestrianNodes = [],
+  initialPedestrianConnections = [],
+  initialEntrances = [],
+  routingDataError = null,
 }: CampusExplorerProps) {
   let locale: Locale = "en"
   let t: TranslationDictionary = translations.en
@@ -111,6 +123,24 @@ export function CampusExplorer({
   )
   const [sortByNearest, setSortByNearest] = useState(false)
   const [isRoutingActive, setIsRoutingActive] = useState(false)
+  const [destinationBuildingId, setDestinationBuildingId] = useState("")
+  const [destinationEntranceId, setDestinationEntranceId] = useState("")
+  const [startEntranceId, setStartEntranceId] = useState("")
+  const [routeFromGps, setRouteFromGps] = useState(false)
+  const [wheelchairRoute, setWheelchairRoute] = useState(false)
+  const [routeMessage, setRouteMessage] = useState<string | null>(null)
+  const [routeLoading, setRouteLoading] = useState(false)
+
+  const routingData = useMemo(() => ({ paths: initialPedestrianPaths, nodes: initialPedestrianNodes, connections: initialPedestrianConnections, entrances: initialEntrances }), [initialPedestrianPaths, initialPedestrianNodes, initialPedestrianConnections, initialEntrances])
+  const buildingsWithEntrances = useMemo(() => initialLocations.filter((location) => initialEntrances.some((entrance) => entrance.location_id === location.id)), [initialLocations, initialEntrances])
+  const destinationEntrances = useMemo(() => initialEntrances.filter((entrance) => entrance.location_id === destinationBuildingId), [initialEntrances, destinationBuildingId])
+  const routeResult: RouteResult | null = useMemo(() => {
+    if (!isRoutingActive || !destinationEntranceId) return null
+    if (routeFromGps) return userLocation ? calculateRouteFromGps(routingData, { lat: userLocation[0], lng: userLocation[1] }, destinationEntranceId, wheelchairRoute) : null
+    if (!startEntranceId) return null
+    return calculatePedestrianRoute(routingData, startEntranceId, destinationEntranceId, wheelchairRoute)
+  }, [isRoutingActive, destinationEntranceId, startEntranceId, routeFromGps, userLocation, wheelchairRoute, routingData])
+  const routePositions = routeResult?.status === "ok" ? routeResult.route.coordinates.map(([lng, lat]) => [lat, lng] as [number, number]) : null
   const [isListeningVoice, setIsListeningVoice] = useState(false)
 
   const setPanelSnap = useCallback((snap: SheetSnap) => {
@@ -309,26 +339,41 @@ export function CampusExplorer({
   const handleStartDirections = useCallback(() => {
     if (isRoutingActive) {
       setIsRoutingActive(false)
+      setRouteMessage(null)
       return
     }
     setIsRoutingActive(true)
-    if (sheetSnapRef.current === "peek") setPanelSnap("half")
-    if (
-      !userLocation &&
-      typeof navigator !== "undefined" &&
-      navigator.geolocation
-    ) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation([pos.coords.latitude, pos.coords.longitude])
-        },
-        () => {
-          // ignore or fallback
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      )
+    if (selectedLocation) {
+      const selectedBuildingId = initialEntrances.some((entrance) => entrance.location_id === selectedLocation.id)
+        ? selectedLocation.id
+        : selectedLocation.parent_id ?? ""
+      const choices = initialEntrances.filter((entrance) => entrance.location_id === selectedBuildingId)
+      if (choices.length) {
+        setDestinationBuildingId(selectedBuildingId)
+        setDestinationEntranceId(choices[0].id)
+      }
     }
-  }, [isRoutingActive, userLocation, setPanelSnap])
+    if (sheetSnapRef.current === "peek") setPanelSnap("half")
+  }, [isRoutingActive, selectedLocation, initialEntrances, setPanelSnap])
+
+  const requestGpsRoute = useCallback(() => {
+    setRouteFromGps(true)
+    setStartEntranceId("")
+    setRouteLoading(true)
+    setRouteMessage(null)
+    if (!navigator.geolocation) {
+      setRouteLoading(false)
+      setRouteMessage("Location is unavailable in this browser. Choose a starting entrance instead.")
+      return
+    }
+    navigator.geolocation.getCurrentPosition((position) => {
+      setUserLocation([position.coords.latitude, position.coords.longitude])
+      setRouteLoading(false)
+    }, () => {
+      setRouteLoading(false)
+      setRouteMessage("Could not get your location. Choose a starting entrance instead.")
+    }, { enableHighAccuracy: true, timeout: 10000 })
+  }, [])
 
   const handlePanelPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -774,8 +819,8 @@ export function CampusExplorer({
           locations={filteredLocations}
           allLocations={initialLocations}
           pedestrianPaths={initialPedestrianPaths}
+          pedestrianRoute={routePositions}
           selectedLocation={selectedLocation}
-          userLocation={userLocation}
           isRoutingActive={isRoutingActive}
           onSelectLocation={handleSelectLocation}
           onUserLocationChange={setUserLocation}
@@ -878,6 +923,48 @@ export function CampusExplorer({
 
         {/* Sheet / Panel Body */}
         <div className="relative flex flex-1 flex-col overflow-hidden">
+          {isRoutingActive && (
+            <div className="shrink-0 space-y-3 border-b border-border bg-background p-3 sm:p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">Walking directions</h2>
+                <button type="button" onClick={() => { setIsRoutingActive(false); setRouteMessage(null) }} className="text-sm text-muted-foreground underline">Clear route</button>
+              </div>
+              {routingDataError ? <p role="alert" className="text-sm text-destructive">{routingDataError}</p> : (
+                <>
+                  <label className="block text-xs font-medium">Destination building
+                    <select aria-label="Destination building" className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={destinationBuildingId} onChange={(event) => { setDestinationBuildingId(event.target.value); const first = initialEntrances.find((entrance) => entrance.location_id === event.target.value); setDestinationEntranceId(first?.id ?? "") }}>
+                      <option value="">Choose a building</option>
+                      {buildingsWithEntrances.map((building) => <option key={building.id} value={building.id}>{building.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-medium">Destination entrance
+                    <select aria-label="Destination entrance" className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={destinationEntranceId} onChange={(event) => setDestinationEntranceId(event.target.value)}>
+                      <option value="">Choose an entrance</option>
+                      {destinationEntrances.map((entrance) => <option key={entrance.id} value={entrance.id}>{entrance.name}</option>)}
+                    </select>
+                  </label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={requestGpsRoute} aria-pressed={routeFromGps} className={cn("flex-1 rounded-md border px-2 py-2 text-xs", routeFromGps && "border-primary bg-primary/10")}>Use my location</button>
+                    <button type="button" onClick={() => { setRouteFromGps(false); setRouteMessage(null) }} aria-pressed={!routeFromGps} className={cn("flex-1 rounded-md border px-2 py-2 text-xs", !routeFromGps && "border-primary bg-primary/10")}>Choose starting entrance</button>
+                  </div>
+                  {!routeFromGps && <label className="block text-xs font-medium">Starting entrance
+                    <select aria-label="Starting entrance" className="mt-1 w-full rounded-md border bg-background p-2 text-sm" value={startEntranceId} onChange={(event) => setStartEntranceId(event.target.value)}>
+                      <option value="">Choose an entrance</option>
+                      {initialEntrances.map((entrance) => <option key={entrance.id} value={entrance.id}>{initialLocations.find((location) => location.id === entrance.location_id)?.name ?? "Building"} — {entrance.name}</option>)}
+                    </select>
+                  </label>}
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={wheelchairRoute} onChange={(event) => setWheelchairRoute(event.target.checked)} /> Wheelchair accessible route</label>
+                  {routeLoading && <p role="status" className="text-sm text-muted-foreground">Finding your location…</p>}
+                  {routeMessage && <p role="alert" className="text-sm text-destructive">{routeMessage}</p>}
+                  {routeResult?.status === "no-route" && <p role="status" className="text-sm text-amber-700 dark:text-amber-300">{routeResult.reason}</p>}
+                  {routeResult?.status === "ok" && <div role="status" className="rounded-md bg-muted/70 p-3 text-sm">
+                    <p><strong>{routeResult.route.distanceMeters < 1000 ? `${Math.round(routeResult.route.distanceMeters)} m` : `${(routeResult.route.distanceMeters / 1000).toFixed(1)} km`}</strong> · Approx. {routeResult.route.approximateMinutes} min walking</p>
+                    <p className="mt-1">{routeResult.route.wheelchairAccessible ? "Paths are marked wheelchair accessible; entrance accessibility is unknown." : routeResult.route.wheelchairWarning}</p>
+                  </div>}
+                </>
+              )}
+            </div>
+          )}
           {activeTab === "services" ? (
             /* Services Panel */
             <div

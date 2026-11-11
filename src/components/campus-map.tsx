@@ -174,29 +174,24 @@ function MapSelectionController({
 
 interface MapRouteControllerProps {
   isRoutingActive?: boolean
-  userLocation?: [number, number] | null
-  destCoords?: { lat: number; lng: number } | null
+  route?: [number, number][] | null
 }
 
 function MapRouteController({
   isRoutingActive,
-  userLocation,
-  destCoords,
+  route,
 }: MapRouteControllerProps) {
   const map = useMap()
 
   useEffect(() => {
-    if (!isRoutingActive || !userLocation || !destCoords) return
-    const bounds = L.latLngBounds([
-      userLocation,
-      [destCoords.lat, destCoords.lng],
-    ])
+    if (!isRoutingActive || !route || route.length === 0) return
+    const bounds = L.latLngBounds(route)
     map.fitBounds(bounds, {
       padding: [70, 70],
       maxZoom: 18,
       animate: true,
     })
-  }, [isRoutingActive, userLocation, destCoords, map])
+  }, [isRoutingActive, route, map])
 
   return null
 }
@@ -264,8 +259,8 @@ export interface CampusMapProps {
   allLocations?: Location[]
   markers?: MapMarker[]
   pedestrianPaths?: PedestrianPath[]
+  pedestrianRoute?: [number, number][] | null
   selectedLocation: Location | null
-  userLocation?: [number, number] | null
   isRoutingActive?: boolean
   onSelectLocation?: (location: Location) => void
   onUserLocationChange?: (coords: [number, number]) => void
@@ -279,8 +274,8 @@ export default function CampusMap({
   allLocations,
   markers,
   pedestrianPaths = [],
+  pedestrianRoute = null,
   selectedLocation,
-  userLocation,
   isRoutingActive = false,
   onSelectLocation,
   onUserLocationChange,
@@ -397,27 +392,28 @@ export default function CampusMap({
         />
         <MapRouteController
           isRoutingActive={isRoutingActive}
-          userLocation={userLocation}
-          destCoords={destCoords}
+          route={pedestrianRoute}
         />
 
         <Pane name="pedestrianPaths" style={{ zIndex: 350 }}>
           <PedestrianPathsLayer paths={pedestrianPaths} />
         </Pane>
 
-        {/* Walking Route Polyline (Mockup Style: dashed blue path) */}
-        {isRoutingActive && userLocation && destCoords && (
+        <Pane name="walkingRoute" style={{ zIndex: 450 }}>
+        {isRoutingActive && pedestrianRoute && pedestrianRoute.length > 0 && (
           <Polyline
-            positions={[userLocation, [destCoords.lat, destCoords.lng]]}
+            positions={pedestrianRoute}
+            pane="walkingRoute"
             pathOptions={{
-              color: "#2563eb",
-              weight: 4,
-              dashArray: "6, 10",
+              color: "#7c3aed",
+              weight: 7,
+              opacity: 0.95,
               lineCap: "round",
               lineJoin: "round",
             }}
           />
         )}
+        </Pane>
 
         {/* Selected Destination Tooltip Badge (Mockup Style: [ Health Center ]) */}
         {selectedLocation && destCoords && selectedBadgeIcon && (
