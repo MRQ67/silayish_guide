@@ -15,6 +15,45 @@ export interface MultiPolygon extends GeoJsonObject {
   coordinates: Position[][][]
 }
 
+export interface LineString extends GeoJsonObject {
+  type: "LineString"
+  coordinates: Position[]
+}
+
+export type PedestrianPathType = "walkway" | "ramp" | "stairs" | "other"
+
+export interface PedestrianPath {
+  id: string
+  name: string
+  geometry: LineString
+  path_type: PedestrianPathType
+  wheelchair_accessible: boolean
+  surface: string | null
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PedestrianGraphNode {
+  id: string
+  kind: "junction" | "entrance"
+  name: string | null
+  lat: number
+  lng: number
+  level: string | null
+  entrance_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PedestrianPathConnection {
+  path_id: string
+  vertex_index: number
+  node_id: string
+  created_at: string
+}
+
 export interface Feature<
   G = Polygon | MultiPolygon,
   P = Record<string, unknown>,

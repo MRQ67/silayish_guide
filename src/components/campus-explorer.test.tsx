@@ -75,6 +75,28 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
 
   beforeEach(() => {
     window.history.replaceState({}, "", "/")
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 768,
+    })
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1024,
+    })
+    class TestPointerEvent extends MouseEvent {
+      pointerId: number
+      pointerType: string
+
+      constructor(type: string, init: PointerEventInit = {}) {
+        super(type, init)
+        this.pointerId = init.pointerId ?? 1
+        this.pointerType = init.pointerType ?? "touch"
+      }
+    }
+    Object.defineProperty(window, "PointerEvent", {
+      configurable: true,
+      value: TestPointerEvent,
+    })
     try {
       localStorage.clear()
     } catch {
@@ -218,7 +240,15 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     expect(screen.getByText("No saved places yet")).toBeDefined()
   })
 
-  it("adjusts bottom sheet snap height between peek, half, and full via drag handle", () => {
+  it("resizes the mobile panel continuously from the handle and preserves the released height", () => {
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 600,
+    })
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 375,
+    })
     render(
       <CampusExplorer
         initialLocations={sampleLocations}
@@ -229,20 +259,56 @@ describe("CampusExplorer Category Filtering and Deep Linking", () => {
     const handle = screen.getByTestId("bottom-sheet-handle")
     const directory = screen.getByRole("region", { name: /Campus Directory/i })
 
-    // Initial state is half (h-[50dvh])
     expect(directory.className).toContain("h-[50dvh]")
 
-    // Click 1: half -> full (h-[calc(100dvh-5.5rem)])
-    fireEvent.click(handle)
-    expect(directory.className).toContain("h-[calc(100dvh-5.5rem)]")
+    fireEvent.pointerDown(handle, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientY: 420,
+    })
+    fireEvent.pointerMove(handle, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientY: 270,
+    })
+    expect(directory.style.getPropertyValue("--mobile-panel-height")).toBe(
+      "450px"
+    )
 
-    // Click 2: full -> peek (h-[88px])
-    fireEvent.click(handle)
-    expect(directory.className).toContain("h-[88px]")
+    fireEvent.pointerUp(handle, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientY: 270,
+    })
+    expect(directory.style.getPropertyValue("--mobile-panel-height")).toBe(
+      "450px"
+    )
 
-    // Click 3: peek -> half (h-[50dvh])
     fireEvent.click(handle)
-    expect(directory.className).toContain("h-[50dvh]")
+    expect(directory.style.getPropertyValue("--mobile-panel-height")).toBe(
+      "450px"
+    )
+    expect(directory.className).toContain("md:h-full")
+    expect(screen.getByTestId("bottom-sheet-handle-container").className).toContain(
+      "md:hidden"
+    )
+  })
+
+  it("does not start resizing when pointer movement begins in the list header", () => {
+    render(
+      <CampusExplorer
+        initialLocations={sampleLocations}
+        initialCategories={sampleCategories}
+      />
+    )
+    const directory = screen.getByRole("region", { name: /Campus Directory/i })
+    const listHeader = screen.getByTestId("nearby-sort-toggle")
+      .parentElement as HTMLElement
+
+    fireEvent.pointerDown(listHeader, { pointerId: 2, clientY: 400 })
+    fireEvent.pointerMove(listHeader, { pointerId: 2, clientY: 250 })
+
+    expect(directory.style.getPropertyValue("--mobile-panel-height")).toBe("")
   })
 
   it("supports keyboard navigation with arrow keys across floating dock tabs", () => {

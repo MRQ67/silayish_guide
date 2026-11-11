@@ -143,6 +143,60 @@ export interface Database {
           },
         ]
       }
+      pedestrian_paths: {
+        Row: {
+          id: string
+          name: string
+          geometry: Json
+          path_type: string
+          wheelchair_accessible: boolean
+          surface: string | null
+          notes: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          geometry: Json
+          path_type: string
+          wheelchair_accessible: boolean
+          surface?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          geometry?: Json
+          path_type?: string
+          wheelchair_accessible?: boolean
+          surface?: string | null
+          notes?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pedestrian_graph_nodes: {
+        Row: { id: string; kind: string; name: string | null; lat: number; lng: number; level: string | null; entrance_id: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; kind: string; name?: string | null; lat: number; lng: number; level?: string | null; entrance_id?: string | null; created_at?: string; updated_at?: string }
+        Update: { id?: string; kind?: string; name?: string | null; lat?: number; lng?: number; level?: string | null; entrance_id?: string | null; created_at?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "pedestrian_graph_nodes_entrance_id_fkey"; columns: ["entrance_id"]; referencedRelation: "location_entrances"; referencedColumns: ["id"] }]
+      }
+      pedestrian_path_connections: {
+        Row: { path_id: string; vertex_index: number; node_id: string; created_at: string }
+        Insert: { path_id: string; vertex_index: number; node_id: string; created_at?: string }
+        Update: { path_id?: string; vertex_index?: number; node_id?: string; created_at?: string }
+        Relationships: [
+          { foreignKeyName: "pedestrian_path_connections_path_id_fkey"; columns: ["path_id"]; referencedRelation: "pedestrian_paths"; referencedColumns: ["id"] },
+          { foreignKeyName: "pedestrian_path_connections_node_id_fkey"; columns: ["node_id"]; referencedRelation: "pedestrian_graph_nodes"; referencedColumns: ["id"] }
+        ]
+      }
       services: {
         Row: {
           id: string

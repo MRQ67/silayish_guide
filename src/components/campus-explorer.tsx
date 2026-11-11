@@ -16,7 +16,12 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
-import type { Category, Location, Service } from "@/lib/types"
+import type {
+  Category,
+  Location,
+  PedestrianPath,
+  Service,
+} from "@/lib/types"
 import { normalizeCode, searchLocations } from "@/lib/search"
 import { getMapMarkers } from "@/lib/map-utils"
 import { getLocationDistanceMeters } from "@/lib/location-utils"
@@ -33,6 +38,11 @@ import { cn } from "@/lib/utils"
 import { resolveCategoryStyle } from "@/lib/category-style"
 import { LanguageToggle } from "@/components/language-toggle"
 import { ThemeToggle } from "@/components/theme-toggle"
+import {
+  clampMobilePanelHeight,
+  getNearestSheetSnap,
+  type SheetSnap,
+} from "@/lib/mobile-panel-utils"
 
 const CampusMap = dynamic(() => import("@/components/campus-map"), {
   ssr: false,
@@ -46,18 +56,20 @@ const CampusMap = dynamic(() => import("@/components/campus-map"), {
   ),
 })
 
-export type SheetSnap = "peek" | "half" | "full"
+export type { SheetSnap } from "@/lib/mobile-panel-utils"
 
 export interface CampusExplorerProps {
   initialLocations: Location[]
   initialCategories?: Category[]
   initialServices?: Service[]
+  initialPedestrianPaths?: PedestrianPath[]
 }
 
 export function CampusExplorer({
   initialLocations,
   initialCategories = [],
   initialServices = [],
+  initialPedestrianPaths = [],
 }: CampusExplorerProps) {
   let locale: Locale = "en"
   let t: TranslationDictionary = translations.en
@@ -76,6 +88,19 @@ export function CampusExplorer({
     "locations" | "services" | "saved"
   >("locations")
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>("half")
+  const [panelHeight, setPanelHeight] = useState<number | null>(null)
+  const [isPanelDragging, setIsPanelDragging] = useState(false)
+  const panelSnap =
+    panelHeight === null || typeof window === "undefined"
+      ? sheetSnap
+      : getNearestSheetSnap(panelHeight, window.innerHeight)
+  const sheetSnapRef = useRef<SheetSnap>("half")
+  const panelRef = useRef<HTMLElement | null>(null)
+  const panelPointerRef = useRef<{
+    pointerId: number
+    startY: number
+    startHeight: number
+  } | null>(null)
   const [showFullDetails, setShowFullDetails] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
@@ -88,9 +113,11 @@ export function CampusExplorer({
   const [isRoutingActive, setIsRoutingActive] = useState(false)
   const [isListeningVoice, setIsListeningVoice] = useState(false)
 
-  // Touch tracking exclusively on the sheet handle container (prevents hijacking list scrolling)
-  const touchStartYRef = useRef<number | null>(null)
-  const touchCurrentYRef = useRef<number | null>(null)
+  const setPanelSnap = useCallback((snap: SheetSnap) => {
+    sheetSnapRef.current = snap
+    setSheetSnap(snap)
+    setPanelHeight(null)
+  }, [])
 
   // Initialize selectedLocation to null to prevent SSR hydration mismatch, then sync on mount
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
@@ -117,7 +144,7 @@ export function CampusExplorer({
       )
       if (match) {
         setSelectedLocation(match)
-        setSheetSnap((prev) => (prev === "peek" ? "half" : prev))
+        if (sheetSnapRef.current === "peek") setPanelSnap("half")
       } else {
         setSelectedLocation(null)
       }
@@ -126,7 +153,7 @@ export function CampusExplorer({
     syncFromUrl()
     window.addEventListener("popstate", syncFromUrl)
     return () => window.removeEventListener("popstate", syncFromUrl)
-  }, [initialLocations])
+  }, [initialLocations, setPanelSnap])
 
   // Derive categories from initialCategories or unique locations
   const categories = useMemo(() => {
@@ -253,14 +280,14 @@ export function CampusExplorer({
     lastSelectedIdRef.current = location.id
     setSelectedLocation(location)
     setShowFullDetails(false)
-    setSheetSnap((prev) => (prev === "peek" ? "half" : prev))
+    if (sheetSnapRef.current === "peek") setPanelSnap("half")
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href)
       const param = location.code || location.id
       url.searchParams.set("location", param)
       window.history.replaceState({}, "", url.toString())
     }
-  }, [])
+  }, [setPanelSnap])
 
   const handleDeselectLocation = useCallback(() => {
     setSelectedLocation(null)
@@ -285,7 +312,7 @@ export function CampusExplorer({
       return
     }
     setIsRoutingActive(true)
-    setSheetSnap((prev) => (prev === "peek" ? "half" : prev))
+    if (sheetSnapRef.current === "peek") setPanelSnap("half")
     if (
       !userLocation &&
       typeof navigator !== "undefined" &&
@@ -301,56 +328,79 @@ export function CampusExplorer({
         { enableHighAccuracy: true, timeout: 8000 }
       )
     }
-  }, [isRoutingActive, userLocation])
+  }, [isRoutingActive, userLocation, setPanelSnap])
 
-  // Sheet swipe handlers mounted exclusively on the handle/header container
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartYRef.current = e.touches[0].clientY
-    touchCurrentYRef.current = e.touches[0].clientY
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchCurrentYRef.current = e.touches[0].clientY
-  }
-
-  const handleTouchCancel = () => {
-    touchStartYRef.current = null
-    touchCurrentYRef.current = null
-  }
-
-  const handleTouchEnd = () => {
-    if (touchStartYRef.current == null || touchCurrentYRef.current == null)
-      return
-    const deltaY = touchCurrentYRef.current - touchStartYRef.current
-    const threshold = 35 // px
-
-    if (deltaY < -threshold) {
-      // Swiped UP -> expand
-      setSheetSnap((prev) => {
-        if (prev === "peek") return "half"
-        if (prev === "half") return "full"
-        return "full"
-      })
-    } else if (deltaY > threshold) {
-      // Swiped DOWN -> collapse
-      setSheetSnap((prev) => {
-        if (prev === "full") return "half"
-        if (prev === "half") return "peek"
-        return "peek"
-      })
+  const handlePanelPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    const measuredHeight = panelRef.current?.getBoundingClientRect().height
+    const startHeight = measuredHeight || window.innerHeight * 0.5
+    panelPointerRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight,
     }
-
-    touchStartYRef.current = null
-    touchCurrentYRef.current = null
+    if (typeof event.currentTarget.setPointerCapture === "function") {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    setIsPanelDragging(true)
   }
 
-  const handleCycleSnap = () => {
-    setSheetSnap((prev) => {
-      if (prev === "peek") return "half"
-      if (prev === "half") return "full"
-      return "peek"
-    })
+  const updatePanelFromPointer = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = panelPointerRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.preventDefault()
+    const height = clampMobilePanelHeight(
+      drag.startHeight + drag.startY - event.clientY,
+      window.innerHeight
+    )
+    const snap = getNearestSheetSnap(height, window.innerHeight)
+    sheetSnapRef.current = snap
+    setSheetSnap(snap)
+    setPanelHeight(height)
   }
+
+  const finishPanelPointer = () => {
+    panelPointerRef.current = null
+    setIsPanelDragging(false)
+  }
+
+  const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+    event.preventDefault()
+    const currentHeight =
+      panelRef.current?.getBoundingClientRect().height || window.innerHeight * 0.5
+    const nextHeight = clampMobilePanelHeight(
+      currentHeight + (event.key === "ArrowUp" ? 24 : -24),
+      window.innerHeight
+    )
+    const snap = getNearestSheetSnap(nextHeight, window.innerHeight)
+    sheetSnapRef.current = snap
+    setSheetSnap(snap)
+    setPanelHeight(nextHeight)
+  }
+
+  useEffect(
+    () => () => {
+      panelPointerRef.current = null
+    },
+    []
+  )
+
+  useEffect(() => {
+    const constrainPanelAfterResize = () => {
+      setPanelHeight((height) =>
+        height === null
+          ? null
+          : clampMobilePanelHeight(height, window.innerHeight)
+      )
+    }
+    window.addEventListener("resize", constrainPanelAfterResize)
+    return () => window.removeEventListener("resize", constrainPanelAfterResize)
+  }, [])
+
+  useEffect(() => {
+    sheetSnapRef.current = panelSnap
+  }, [panelSnap])
 
   // Manage Web Speech API instance and prevent resource leaks
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -634,7 +684,7 @@ export function CampusExplorer({
         data-testid="tab-locations"
         onClick={() => {
           setActiveTab("locations")
-          if (sheetSnap === "peek") setSheetSnap("half")
+          if (panelSnap === "peek") setPanelSnap("half")
         }}
         onKeyDown={(e) => handleDockKeyDown(e, "locations")}
         className={cn(
@@ -658,7 +708,7 @@ export function CampusExplorer({
         onClick={() => {
           setActiveTab("services")
           handleDeselectLocation()
-          if (sheetSnap === "peek") setSheetSnap("half")
+          if (panelSnap === "peek") setPanelSnap("half")
         }}
         onKeyDown={(e) => handleDockKeyDown(e, "services")}
         className={cn(
@@ -682,7 +732,7 @@ export function CampusExplorer({
         onClick={() => {
           setActiveTab("saved")
           handleDeselectLocation()
-          if (sheetSnap === "peek") setSheetSnap("half")
+          if (panelSnap === "peek") setPanelSnap("half")
         }}
         onKeyDown={(e) => handleDockKeyDown(e, "saved")}
         className={cn(
@@ -701,9 +751,9 @@ export function CampusExplorer({
   )
 
   const snapClasses = {
-    peek: "h-[88px]",
+    peek: "h-32",
     half: "h-[50dvh]",
-    full: "h-[calc(100dvh-5.5rem)]",
+    full: "h-[calc(100dvh-6rem)]",
   }
 
   return (
@@ -723,6 +773,7 @@ export function CampusExplorer({
         <CampusMap
           locations={filteredLocations}
           allLocations={initialLocations}
+          pedestrianPaths={initialPedestrianPaths}
           selectedLocation={selectedLocation}
           userLocation={userLocation}
           isRoutingActive={isRoutingActive}
@@ -731,9 +782,9 @@ export function CampusExplorer({
           onToggleRouting={setIsRoutingActive}
           locateControlClassName={cn(
             "transition-all duration-300 md:bottom-5",
-            sheetSnap === "peek"
+            panelSnap === "peek"
               ? "bottom-28"
-              : sheetSnap === "half"
+              : panelSnap === "half"
                 ? "bottom-[calc(50dvh+1rem)]"
                 : "hidden"
           )}
@@ -742,30 +793,47 @@ export function CampusExplorer({
 
       {/* Mobile Draggable Bottom Sheet & Desktop Sidebar */}
       <section
+        ref={panelRef}
         aria-label="Campus Directory"
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-[450] flex flex-col rounded-t-[28px] border-t border-border/80 bg-[#FAF9F6]/95 dark:bg-card/95 backdrop-blur-md shadow-2xl transition-all duration-300 ease-out",
-          snapClasses[sheetSnap],
+          "fixed bottom-0 left-0 right-0 z-[450] flex flex-col rounded-t-[28px] border-t border-border/80 bg-[#FAF9F6]/95 dark:bg-card/95 backdrop-blur-md shadow-2xl transition-[height] duration-200 ease-out md:transition-none",
+          isPanelDragging ? "transition-none" : "",
+          panelHeight === null
+            ? snapClasses[sheetSnap]
+            : "h-[var(--mobile-panel-height)]",
           "md:static md:z-auto md:h-full md:w-[400px] lg:w-[440px] md:rounded-none md:border-t-0 md:border-r md:shadow-none md:bg-background"
         )}
+        style={
+          panelHeight === null
+            ? undefined
+            : ({ "--mobile-panel-height": `${panelHeight}px` } as React.CSSProperties)
+        }
       >
-        {/* Mobile Drag Handle Container (Touch handlers exclusively on the handle/header) */}
+        {/* Resize gestures are restricted to the handle, leaving list scrolling untouched. */}
         <div
           data-testid="bottom-sheet-handle-container"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchCancel}
-          className="md:hidden flex flex-col items-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing select-none"
+          className="md:hidden flex shrink-0 flex-col items-center select-none"
         >
-          <button
-            type="button"
+          <div
             data-testid="bottom-sheet-handle"
-            onClick={handleCycleSnap}
-            aria-label={`Bottom sheet is ${sheetSnap}. Click to toggle height.`}
-            aria-expanded={sheetSnap !== "peek"}
-            className="h-1.5 w-12 rounded-full bg-muted-foreground/30 hover:bg-muted-foreground/50 transition-colors"
-          />
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Resize campus directory panel"
+            aria-valuetext={`Panel ${panelSnap}`}
+            tabIndex={0}
+            onPointerDown={handlePanelPointerDown}
+            onPointerMove={updatePanelFromPointer}
+            onPointerUp={(event) => {
+              updatePanelFromPointer(event)
+              finishPanelPointer()
+            }}
+            onPointerCancel={finishPanelPointer}
+            onLostPointerCapture={finishPanelPointer}
+            onKeyDown={handlePanelKeyDown}
+            className="flex h-11 w-full touch-none cursor-ns-resize items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <span className="h-1.5 w-12 rounded-full bg-muted-foreground/40 transition-colors hover:bg-muted-foreground/60" />
+          </div>
         </div>
 
         {/* Desktop Sidebar Header (Hidden on Mobile) */}
@@ -775,10 +843,6 @@ export function CampusExplorer({
 
         {/* Subheader: Places Nearby count and Closest sort toggle (Mockup style) */}
         <div
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchCancel}
           className="flex items-center justify-between px-4 py-2 border-b border-border/60 shrink-0 text-xs"
         >
           <div className="flex items-center gap-1.5 font-bold text-foreground sm:text-sm">

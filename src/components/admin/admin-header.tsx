@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 export interface AdminHeaderProps {
   userEmail?: string
   openReportsCount?: number
-  activeSection?: "locations" | "categories" | "reports"
+  activeSection?: "locations" | "categories" | "reports" | "paths"
 }
 
 export async function AdminHeader({
@@ -65,6 +65,17 @@ export async function AdminHeader({
               )}
             >
               Categories
+            </Link>
+            <Link
+              href="/admin/paths"
+              className={cn(
+                "rounded-md px-2.5 py-1 transition-colors",
+                activeSection === "paths"
+                  ? "bg-muted font-semibold text-foreground"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              )}
+            >
+              Paths
             </Link>
             <Link
               href="/admin/reports"

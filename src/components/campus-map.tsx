@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import {
   MapContainer,
   Marker,
+  Pane,
   Polygon,
   Polyline,
   Popup,
@@ -14,7 +15,7 @@ import {
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
-import type { Location } from "@/lib/types"
+import type { Location, PedestrianPath } from "@/lib/types"
 import type { MapMarker } from "@/lib/map-utils"
 import {
   calculateMapBounds,
@@ -37,6 +38,7 @@ import { createCategoryPinIcon } from "@/lib/category-pin-utils"
 import { MapPopup } from "@/components/map-popup"
 import { LocateControl } from "@/components/locate-control"
 import { useTheme } from "@/components/theme-provider"
+import { PedestrianPathsLayer } from "@/components/pedestrian-paths-layer"
 
 fixLeafletDefaultIcon()
 
@@ -261,6 +263,7 @@ export interface CampusMapProps {
   locations?: Location[]
   allLocations?: Location[]
   markers?: MapMarker[]
+  pedestrianPaths?: PedestrianPath[]
   selectedLocation: Location | null
   userLocation?: [number, number] | null
   isRoutingActive?: boolean
@@ -275,6 +278,7 @@ export default function CampusMap({
   locations,
   allLocations,
   markers,
+  pedestrianPaths = [],
   selectedLocation,
   userLocation,
   isRoutingActive = false,
@@ -396,6 +400,10 @@ export default function CampusMap({
           userLocation={userLocation}
           destCoords={destCoords}
         />
+
+        <Pane name="pedestrianPaths" style={{ zIndex: 350 }}>
+          <PedestrianPathsLayer paths={pedestrianPaths} />
+        </Pane>
 
         {/* Walking Route Polyline (Mockup Style: dashed blue path) */}
         {isRoutingActive && userLocation && destCoords && (

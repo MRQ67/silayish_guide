@@ -2,7 +2,12 @@ import { Suspense } from "react"
 import { unstable_rethrow } from "next/navigation"
 import { connection } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import type { Category, Location, Service } from "@/lib/types"
+import type {
+  Category,
+  Location,
+  PedestrianPath,
+  Service,
+} from "@/lib/types"
 import { handleLocationError } from "@/lib/errors"
 import { CampusExplorer } from "@/components/campus-explorer"
 
@@ -55,24 +60,31 @@ async function LocationLoader() {
   let locations: Location[] = []
   let categories: Category[] = []
   let services: Service[] = []
+  let pedestrianPaths: PedestrianPath[] = []
   let errorMessage: string | null = null
 
   try {
     const supabase = await createClient()
-    const [locationsRes, categoriesRes, servicesRes] = await Promise.all([
-      supabase
-        .from("locations")
-        .select("*, category:categories(id, name, icon, color)")
-        .order("name", { ascending: true }),
-      supabase
-        .from("categories")
-        .select("id, name, icon, color")
-        .order("name", { ascending: true }),
-      supabase
-        .from("services")
-        .select("*, location:locations(id, name, code)")
-        .order("name", { ascending: true }),
-    ])
+    const [locationsRes, categoriesRes, servicesRes, pathsRes] =
+      await Promise.all([
+        supabase
+          .from("locations")
+          .select("*, category:categories(id, name, icon, color)")
+          .order("name", { ascending: true }),
+        supabase
+          .from("categories")
+          .select("id, name, icon, color")
+          .order("name", { ascending: true }),
+        supabase
+          .from("services")
+          .select("*, location:locations(id, name, code)")
+          .order("name", { ascending: true }),
+        supabase
+          .from("pedestrian_paths")
+          .select("*")
+          .eq("is_active", true)
+          .order("name", { ascending: true }),
+      ])
 
     let locationsData = locationsRes.data
     let locationsError = locationsRes.error
@@ -113,6 +125,12 @@ async function LocationLoader() {
     } else if (servicesRes.data) {
       services = (servicesRes.data as Service[]) || []
     }
+
+    if (pathsRes.error) {
+      console.error("[pedestrian paths] fetch error:", pathsRes.error)
+    } else if (pathsRes.data) {
+      pedestrianPaths = (pathsRes.data as unknown as PedestrianPath[]) || []
+    }
   } catch (err) {
     unstable_rethrow(err)
     errorMessage = handleLocationError(err)
@@ -152,6 +170,7 @@ async function LocationLoader() {
         initialLocations={locations}
         initialCategories={categories}
         initialServices={services}
+        initialPedestrianPaths={pedestrianPaths}
       />
     </main>
   )
